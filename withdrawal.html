@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Withdraw Funds - Trustcode</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Withdraw Funds</h1>
+  </header>
+
+  <div class="container">
+    <form id="withdrawForm">
+      <label for="amount">Amount (Ksh)</label>
+      <input type="number" id="amount" required min="100" placeholder="Minimum 100" />
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" required placeholder="e.g. +254712345678" />
+
+      <button type="submit">Request Withdrawal</button>
+      <div id="withdrawMessage"></div>
+    </form>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      protectPage();
+      const user = getCurrentUser();
+      if (!user || !user.uid) return;
+
+      const withdrawForm = document.getElementById("withdrawForm");
+      const withdrawMessage = document.getElementById("withdrawMessage");
+
+      withdrawForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        withdrawMessage.textContent = "";
+        withdrawMessage.className = "alert";
+
+        const amount = parseFloat(document.getElementById("amount").value);
+        const phone = document.getElementById("phone").value.trim();
+
+        if (isNaN(amount) || amount < 100) {
+          withdrawMessage.textContent = "❌ Amount must be at least Ksh 100.";
+          withdrawMessage.classList.add("error");
+          return;
+        }
+
+        try {
+          const userDoc = await db.collection("users").doc(user.uid).get();
+          const userData = userDoc.data();
+          const wallet = userData.wallet || 0;
+
+          if (wallet < amount) {
+            withdrawMessage.textContent = "❌ Insufficient wallet balance.";
+            withdrawMessage.classList.add("error");
+            return;
+          }
+
+          // Save withdrawal request
+          await db.collection("withdrawals").add({
+            uid: user.uid,
+            name: userData.fullName,
+            phone,
+            amount,
+            status: "pending",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          // Deduct balance
+          await db.collection("users").doc(user.uid).update({
+            wallet: wallet - amount
+          });
+
+          withdrawMessage.textContent = "✅ Withdrawal request submitted.";
+          withdrawMessage.classList.add("success");
+          withdrawForm.reset();
+        } catch (err) {
+          console.error("Withdrawal error:", err);
+          withdrawMessage.textContent = "❌ Failed to process request.";
+          withdrawMessage.classList.add("error");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

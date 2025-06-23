@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Referrals - Trustcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef3f9;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      background: #004aad;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    h3 {
+      color: #004aad;
+    }
+    p {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #004aad;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      margin-left: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    ul.card-list {
+      list-style: none;
+      padding: 0;
+    }
+    .card {
+      background: #f7faff;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>My Referral Network</h1>
+  </header>
+
+  <div class="container">
+    <section>
+      <p><strong>Your Referral Code:</strong>
+        <span id="refCode">Loading...</span>
+      </p>
+      <p>
+        <strong>Referral Link:</strong>
+        <span id="refLink">Generating...</span>
+        <button onclick="copyRefLink()">Copy Link</button>
+      </p>
+      <p>Share your referral link to invite others and earn commissions when they invest!</p>
+    </section>
+
+    <section style="margin-top: 30px;">
+      <h3>My Referrals</h3>
+      <ul id="referralsList" class="card-list">
+        <li>Loading referrals...</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Your Auth Utility -->
+  <script src="auth.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function copyRefLink() {
+      const link = document.getElementById("refLink").textContent;
+      navigator.clipboard.writeText(link).then(() => alert("Referral link copied!"));
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      protectPage(); // Ensure only logged-in users can view
+      const user = getCurrentUser();
+      if (!user || !user.uid) return;
+
+      // Display referral code
+      const refCode = user.refCode || "N/A";
+      document.getElementById("refCode").textContent = refCode;
+
+      // Generate and display referral link
+      const refLink = `${window.location.origin}/signup.html?ref=${refCode}`;
+      document.getElementById("refLink").textContent = refLink;
+
+      // Load referred users
+      try {
+        const snapshot = await db.collection("users")
+          .where("referredBy", "==", refCode)
+          .get();
+
+        const list = document.getElementById("referralsList");
+        list.innerHTML = "";
+
+        if (snapshot.empty) {
+          list.innerHTML = "<li>No referrals yet.</li>";
+        } else {
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const li = document.createElement("li");
+            li.className = "card";
+            li.innerHTML = `<strong>${data.fullName}</strong><br>${data.email} | ${data.phone}`;
+            list.appendChild(li);
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching referrals:", err);
+      }
+    });
+  </script>
+
+</body>
+</html>

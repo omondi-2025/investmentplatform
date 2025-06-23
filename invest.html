@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invest - Trustcode</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f4f8fb;
+      padding: 1rem;
+    }
+    header {
+      background-color: #004aad;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .wallet {
+      font-weight: bold;
+      margin: 1rem 0;
+      color: green;
+    }
+    .plans {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .card {
+      flex: 1 1 calc(50% - 10px);
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      padding: 15px;
+      background: #fff;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+    .card:hover {
+      border-color: #004aad;
+    }
+    .card.selected {
+      border: 3px solid #004aad;
+      background: #e6f0ff;
+    }
+    form {
+      background: #fff;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    form input, form button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    form button {
+      background-color: #004aad;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .alert {
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .alert.success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .alert.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    @media (max-width: 600px) {
+      .card {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>📈 Invest in a Plan</h2>
+  </header>
+
+  <div class="wallet" id="walletBalance">Wallet: KES ...</div>
+
+  <div class="plans" id="plansContainer"></div>
+
+  <form id="investForm">
+    <input type="hidden" id="planAmount" />
+    <label for="investorPhone">Phone Number</label>
+    <input type="tel" id="investorPhone" placeholder="e.g. +254712345678" required />
+
+    <button type="submit">Invest Now</button>
+    <div id="investMessage"></div>
+  </form>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="auth.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const investmentPlans = [
+      { amount: 300, daily: 80, duration: 7 },
+      { amount: 500, daily: 130, duration: 45 },
+      { amount: 900, daily: 240, duration: 45 },
+      { amount: 1700, daily: 453, duration: 45 },
+      { amount: 5000, daily: 1330, duration: 45 },
+      { amount: 10000, daily: 2660, duration: 45 }
+    ];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await protectPage();
+      let user = getCurrentUser();
+      if (!user || !user.uid) return;
+
+      const walletEl = document.getElementById("walletBalance");
+
+      async function refreshWallet() {
+        const latestDoc = await db.collection("users").doc(user.uid).get();
+        const updated = latestDoc.data();
+        if (updated) {
+          user = updated;
+          walletEl.textContent = `Wallet: KES ${updated.wallet || 0}`;
+        }
+      }
+
+      await refreshWallet();
+
+      const plansContainer = document.getElementById("plansContainer");
+      investmentPlans.forEach(plan => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <h3>KES ${plan.amount}</h3>
+          <p>Earn KES ${plan.daily}/day</p>
+          <p>Duration: ${plan.duration} days</p>
+        `;
+        div.addEventListener("click", () => {
+          document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
+          div.classList.add("selected");
+          document.getElementById("planAmount").value = plan.amount;
+        });
+        plansContainer.appendChild(div);
+      });
+
+      document.getElementById("investForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const phone = document.getElementById("investorPhone").value.trim();
+        const amount = document.getElementById("planAmount").value;
+        const msg = document.getElementById("investMessage");
+        msg.textContent = "";
+        msg.className = "alert";
+
+        if (!amount) {
+          msg.textContent = "❌ Please select a plan.";
+          msg.classList.add("error");
+          return;
+        }
+        if (!/^\+254\d{9}$/.test(phone)) {
+          msg.textContent = "❌ Invalid phone format. Use +2547XXXXXXX.";
+          msg.classList.add("error");
+          return;
+        }
+
+        try {
+          const snapshot = await db.collection("users").doc(user.uid).get();
+          const userData = snapshot.data();
+          if (!userData) throw new Error("User not found");
+          if (userData.wallet < Number(amount)) {
+            msg.textContent = "❌ Insufficient wallet balance.";
+            msg.classList.add("error");
+            return;
+          }
+
+          const plan = investmentPlans.find(p => p.amount == amount);
+          await db.collection("investments").add({
+            uid: user.uid,
+            name: userData.fullName || "Anonymous",
+            phone,
+            planAmount: plan.amount,
+            dailyEarning: plan.daily,
+            duration: plan.duration,
+            status: "active",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          await db.collection("users").doc(user.uid).update({
+            wallet: userData.wallet - plan.amount
+          });
+
+          msg.textContent = "✅ Investment successful!";
+          msg.classList.add("success");
+          e.target.reset();
+          document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
+          await refreshWallet();
+        } catch (err) {
+          console.error("Error:", err);
+          msg.textContent = "❌ Error occurred. Try again.";
+          msg.classList.add("error");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

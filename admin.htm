@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Trustcode</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Admin Dashboard - Investment Records</h1>
+  </header>
+
+  <div class="container">
+    <div id="adminMessage" class="alert"></div>
+    <div id="investmentList"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    const adminMessage = document.getElementById("adminMessage");
+    const investmentList = document.getElementById("investmentList");
+
+    const adminEmails = ["admin@trustcode.com"];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      if (!adminEmails.includes(user.email)) {
+        adminMessage.textContent = "❌ You are not authorized to access this page.";
+        adminMessage.className = "alert error";
+        return;
+      }
+
+      try {
+        const snapshot = await db.collection("investments").orderBy("createdAt", "desc").get();
+
+        if (snapshot.empty) {
+          investmentList.innerHTML = "<p>No investments found.</p>";
+          return;
+        }
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <strong>Name:</strong> ${data.name}<br>
+            <strong>Phone:</strong> ${data.phone}<br>
+            <strong>Amount:</strong> Ksh ${data.planAmount}<br>
+            <strong>Date:</strong> ${data.createdAt?.toDate().toLocaleString() || 'N/A'}<br>
+          `;
+          investmentList.appendChild(card);
+        });
+      } catch (error) {
+        console.error(error);
+        adminMessage.textContent = "❌ Failed to load investments.";
+        adminMessage.className = "alert error";
+      }
+    });
+  </script>
+</body>
+</html>
