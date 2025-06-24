@@ -275,4 +275,10 @@ form button:hover {
   .bottom-nav a span {
     font-size: 1.2rem;
   }
+
+  form input,
+  form select,
+  form button {
+    font-size: 14px;
+  }
 }

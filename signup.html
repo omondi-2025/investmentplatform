@@ -107,7 +107,7 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -181,8 +181,9 @@
           wallet: 0
         }));
 
-        signupMessage.textContent = "✅ Account created successfully! Welcome...";
+        signupMessage.textContent = "✅ Account created successfully! Redirecting...";
         signupMessage.className = "alert success";
+
         setTimeout(() => window.location.href = "index.html", 1500);
       } catch (err) {
         console.error("Signup failed:", err);

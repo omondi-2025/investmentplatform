@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Profile - Trustcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #e6f0ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .profile-box {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h2 {
+      color: #004aad;
+      text-align: center;
+    }
+
+    .info {
+      margin-top: 20px;
+    }
+
+    .info p {
+      margin: 12px 0;
+      font-size: 16px;
+      color: #333;
+    }
+
+    .loading {
+      text-align: center;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    .btn {
+      margin-top: 15px;
+      width: 100%;
+      padding: 12px;
+      background: #0077ff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .btn:hover {
+      background: #0051aa;
+    }
+
+    .btn.secondary {
+      background: #ccc;
+      color: #222;
+    }
+
+    .btn.secondary:hover {
+      background: #bbb;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="profile-box">
+    <h2>My Profile</h2>
+    <div class="info" id="profileInfo">
+      <p><strong>Full Name:</strong> <span id="fullName">Loading...</span></p>
+      <p><strong>Phone Number:</strong> <span id="phone">Loading...</span></p>
+      <p><strong>Email:</strong> <span id="email">Loading...</span></p>
+    </div>
+    <p class="loading" id="loadingMsg">Fetching your data...</p>
+
+    <div class="btn-group">
+      <button class="btn" onclick="logout()">Logout</button>
+      <button class="btn secondary" onclick="goToDashboard()">← Back to Dashboard</button>
+      <button class="btn secondary" onclick="goToEdit()">✏️ Edit Profile</button>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) return location.href = "login.html";
+
+      document.getElementById("email").textContent = user.email;
+
+      try {
+        const doc = await db.collection("users").doc(user.uid).get();
+        if (doc.exists) {
+          const data = doc.data();
+          document.getElementById("fullName").textContent = data.fullName || "Not set";
+          document.getElementById("phone").textContent = data.phone || "Not set";
+          document.getElementById("loadingMsg").style.display = "none";
+        } else {
+          document.getElementById("loadingMsg").textContent = "No profile found.";
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById("loadingMsg").textContent = "❌ Error loading profile.";
+      }
+    });
+
+    function logout() {
+      auth.signOut().then(() => location.href = "login.html");
+    }
+
+    function goToDashboard() {
+      window.location.href = "index.html";
+    }
+
+    function goToEdit() {
+      window.location.href = "edit-profile.html";
+    }
+  </script>
+</body>
+</html>

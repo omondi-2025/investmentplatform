@@ -141,10 +141,12 @@
     const loginMessage = document.getElementById("loginMessage");
     const signupLink = document.getElementById("signupLink");
 
-    // Preserve referral code if passed
+    // Preserve referral code if passed in the URL
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get("ref");
-    if (refCode) signupLink.href = `signup.html?ref=${refCode}`;
+    if (refCode) {
+      signupLink.href = `signup.html?ref=${refCode}`;
+    }
 
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();

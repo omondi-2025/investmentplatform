@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Recharge Wallet - Trustcode</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <link rel="stylesheet" href="styles.css" />
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -43,9 +43,26 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
+    .instructions {
+      background: #eaf4ff;
+      border-left: 4px solid #0077ff;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      font-size: 15px;
+      border-radius: 6px;
+    }
+
     .step-title {
       font-weight: bold;
       margin-top: 1rem;
+    }
+
+    .mpesa-number {
+      font-size: 1.3em;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     textarea {
@@ -75,15 +92,6 @@
       background-color: #004aad;
     }
 
-    .mpesa-number {
-      font-size: 1.3em;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 5px;
-    }
-
     .alert {
       margin-top: 15px;
       padding: 12px;
@@ -100,18 +108,10 @@
       background: #f8d7da;
       color: #721c24;
     }
-
-    .instructions {
-      background: #eaf4ff;
-      border-left: 4px solid #0077ff;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      font-size: 15px;
-      border-radius: 6px;
-    }
   </style>
 </head>
 <body>
+
   <header>
     <h1>Recharge Wallet</h1>
     <a href="index.html" class="dashboard-link">Go to Dashboard</a>
@@ -123,29 +123,29 @@
       <ol>
         <li>Dial <strong>*334#</strong> on your phone.</li>
         <li>Select <strong>Send Money</strong>.</li>
-        <li>Enter the number shown below.</li>
-        <li>Enter the amount you wish to send (minimum KES <strong>200</strong>).</li>
-        <li>After sending, copy the full confirmation message and paste it below.</li>
+        <li>Send to the number below.</li>
+        <li>Minimum amount is <strong>KES 200</strong>.</li>
+        <li>Paste the full M-PESA confirmation message below.</li>
       </ol>
     </div>
 
     <p class="step-title">Step 1:</p>
     <p>Send Money to this number:</p>
     <div class="mpesa-number">
-      <span id="mpesaNumber" style="user-select: all;">0102188852</span>
-      <button type="button" onclick="copyNumber()" style="padding: 5px 10px; font-size: 14px;">Copy</button>
+      <span id="mpesaNumber">Loading...</span>
+      <button onclick="copyNumber()">Copy</button>
     </div>
 
     <p class="step-title">Step 2:</p>
-    <p>Paste your full M-PESA confirmation message below:</p>
+    <p>Paste your full M-PESA confirmation message:</p>
     <form id="rechargeForm">
-      <textarea id="mpesaMessage" rows="5" required placeholder="e.g. QDF56TXY Confirmed. Ksh300.00 sent to 0102188852..."></textarea>
+      <textarea id="mpesaMessage" rows="5" required placeholder="e.g. QDF56TXY Confirmed. Ksh300.00 sent to 0115106550..."></textarea>
       <button type="submit">Submit</button>
       <div id="rechargeMessage"></div>
     </form>
   </div>
 
-  <!-- Firebase -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -163,20 +163,23 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const auth = firebase.auth();
+
+    const mpesaNumbers = ["0116699212", "0115106550", "0111112222", "0112223333", "0113334444"];
+    function getCurrentMpesaNumber() {
+      const index = Math.floor(Date.now() / (15 * 60 * 1000)) % mpesaNumbers.length;
+      return mpesaNumbers[index];
+    }
 
     function copyNumber() {
       const number = document.getElementById("mpesaNumber").textContent;
-      const textarea = document.createElement("textarea");
-      textarea.value = number;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      alert("✅ M-PESA number copied to clipboard!");
+      navigator.clipboard.writeText(number).then(() => alert("✅ M-Pesa number copied!"));
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
+      // Show rotating number
+      const currentNumber = getCurrentMpesaNumber();
+      document.getElementById("mpesaNumber").textContent = currentNumber;
+
       await protectPage();
       const user = getCurrentUser();
       if (!user || !user.uid) return;
@@ -190,13 +193,13 @@
         rechargeMessage.className = "alert";
 
         const message = document.getElementById("mpesaMessage").value.trim();
-        const confirmationMatch = /\bconfirmed\b/i.test(message);
+        const confirmationMatch = /confirmed/i.test(message);
         const amountMatch = message.match(/Ksh\s*([\d,]+(\.\d{1,2})?)/i);
-        const matchedNumber = "0102188852";
+        const matchedNumber = mpesaNumbers.find(num => message.includes(num));
         const transactionCodeMatch = message.match(/^[A-Z0-9]{10}/);
 
-        if (!confirmationMatch || !amountMatch || !message.includes(matchedNumber) || !transactionCodeMatch) {
-          rechargeMessage.textContent = "❌ Invalid or incomplete M-PESA message.";
+        if (!confirmationMatch || !amountMatch || !matchedNumber || !transactionCodeMatch) {
+          rechargeMessage.textContent = "❌ Invalid or incomplete M-Pesa message.";
           rechargeMessage.classList.add("error");
           return;
         }
@@ -238,7 +241,7 @@
           });
 
           const updatedUser = { ...userData, wallet: currentWallet + amount };
-          localStorage.setItem("trustcodeUser", JSON.stringify(updatedUser));
+          localStorage.setItem("user", JSON.stringify(updatedUser));
 
           rechargeMessage.textContent = `✅ KES ${amount.toFixed(2)} added to your wallet.`;
           rechargeMessage.classList.add("success");

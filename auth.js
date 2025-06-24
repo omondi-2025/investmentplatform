@@ -1,4 +1,4 @@
-\// auth.js - Trustcode Auth Helper (Clean Version)
+// auth.js - Trustcode Authentication Helper
 
 // Firebase Config
 const firebaseConfig = {
@@ -18,6 +18,7 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// LocalStorage key
 const LOCAL_STORAGE_KEY = "user";
 
 /**
@@ -28,16 +29,19 @@ function getCurrentUser() {
     const user = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
     return user && user.uid ? user : null;
   } catch (err) {
-    console.warn("Unable to get user from storage.");
+    console.warn("⚠️ getCurrentUser() failed:", err);
     return null;
   }
 }
 
 /**
- * Save user to localStorage with lastUpdated
+ * Save user to localStorage with lastUpdated timestamp
  */
 function storeUserLocally(data) {
-  if (!data || !data.uid) return;
+  if (!data || !data.uid) {
+    console.error("❌ storeUserLocally: Missing UID");
+    return;
+  }
   data.lastUpdated = Date.now();
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
 }
@@ -47,7 +51,7 @@ function storeUserLocally(data) {
  */
 function isDataStale(user) {
   if (!user?.lastUpdated) return true;
-  return Date.now() - user.lastUpdated > 60 * 60 * 1000;
+  return Date.now() - user.lastUpdated > 60 * 60 * 1000; // 1 hour
 }
 
 /**
@@ -56,13 +60,16 @@ function isDataStale(user) {
 async function loadUserData(uid) {
   try {
     const doc = await db.collection("users").doc(uid).get();
-    if (!doc.exists) return null;
+    if (!doc.exists) {
+      console.warn("⚠️ No user found in Firestore for UID:", uid);
+      return null;
+    }
     const data = doc.data();
     data.uid = uid;
     storeUserLocally(data);
     return data;
   } catch (err) {
-    console.error("Failed to refresh user session.");
+    console.error("❌ loadUserData failed:", err);
     return null;
   }
 }
@@ -89,7 +96,7 @@ async function protectPage(requiredRole = null) {
     user = freshUser;
   }
 
-  // Role check
+  // Role-based protection
   if (requiredRole && user.role !== requiredRole) {
     alert("You are not authorized to access this page.");
     window.location.href = "index.html";
@@ -97,7 +104,7 @@ async function protectPage(requiredRole = null) {
 }
 
 /**
- * Redirect if already logged in
+ * Redirect to homepage if already logged in
  */
 function redirectIfLoggedIn() {
   const user = getCurrentUser();
@@ -107,7 +114,7 @@ function redirectIfLoggedIn() {
 }
 
 /**
- * Log out the user cleanly
+ * Log out user cleanly
  */
 function logoutUser(message = null) {
   auth.signOut().finally(() => {
@@ -117,11 +124,10 @@ function logoutUser(message = null) {
   });
 }
 
-// Export to global scope for use on pages
+// Export to global scope
 window.getCurrentUser = getCurrentUser;
 window.storeUserLocally = storeUserLocally;
 window.protectPage = protectPage;
 window.redirectIfLoggedIn = redirectIfLoggedIn;
 window.logoutUser = logoutUser;
 window.loadUserData = loadUserData;
-window.isDataStale = isDataStale;
