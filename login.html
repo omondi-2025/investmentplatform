@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trustcode - Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .login-box {
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #004aad;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      background: #0077ff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #004aad;
+    }
+
+    .alert {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .switch {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    .switch a {
+      color: #004aad;
+      text-decoration: underline;
+    }
+
+    @media (max-width: 500px) {
+      .login-box {
+        margin: 1rem;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Login to Trustcode</h2>
+    <form id="loginForm">
+      <label for="email">Email</label>
+      <input type="email" id="email" required placeholder="Enter your email" />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required placeholder="Enter your password" />
+
+      <button type="submit">Login</button>
+      <div id="loginMessage"></div>
+    </form>
+
+    <div class="switch">
+      Don't have an account? <a id="signupLink" href="signup.html">Sign up</a>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const loginForm = document.getElementById("loginForm");
+    const loginMessage = document.getElementById("loginMessage");
+    const signupLink = document.getElementById("signupLink");
+
+    // Preserve referral code if passed
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get("ref");
+    if (refCode) signupLink.href = `signup.html?ref=${refCode}`;
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      loginMessage.textContent = "";
+      loginMessage.className = "";
+
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        const doc = await db.collection("users").doc(user.uid).get();
+        if (!doc.exists) {
+          throw new Error("Account data not found.");
+        }
+
+        const data = doc.data();
+        localStorage.setItem("user", JSON.stringify(data));
+
+        loginMessage.textContent = "✅ Login successful! Redirecting...";
+        loginMessage.className = "alert success";
+
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1500);
+      } catch (err) {
+        console.error("Login error:", err);
+        loginMessage.textContent = "❌ Invalid email or password. Please try again.";
+        loginMessage.className = "alert error";
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trustcode Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root {
+      --primary: #004aad;
+      --bg: #f4f8fb;
+      --card: #ffffff;
+      --text: #333;
+      --accent: #9c27b0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg);
+    }
+
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .support-btn, header button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .banner {
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .wallet-info {
+      background: var(--card);
+      margin: 1rem;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .wallet-info > div {
+      margin-bottom: 0.5rem;
+    }
+
+    .wallet-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .wallet-box {
+      background: #f2f4ff;
+      padding: 1rem;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid #d4dfff;
+      transition: transform 0.2s ease;
+    }
+
+    .wallet-box:hover {
+      transform: scale(1.03);
+    }
+
+    .wallet-box strong {
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    .quick-access {
+      background: var(--card);
+      margin: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    }
+
+    .quick-access h3 {
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .grid-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+
+    .grid-buttons a {
+      background: var(--primary);
+      padding: 1rem;
+      text-align: center;
+      text-decoration: none;
+      color: white;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .grid-buttons a:hover {
+      background: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: white;
+      border-top: 1px solid #ddd;
+      display: flex;
+      justify-content: space-around;
+      padding: 0.5rem 0;
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
+    }
+
+    .bottom-nav a {
+      text-align: center;
+      color: #333;
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.3s ease;
+    }
+
+    .bottom-nav a:hover {
+      color: var(--primary);
+    }
+
+    .bottom-nav a span {
+      display: block;
+      font-size: 1.3rem;
+    }
+
+    .support-modal {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 10px;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      z-index: 999;
+    }
+
+    .support-modal a {
+      display: block;
+      margin: 10px 0;
+      color: var(--primary);
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .support-modal a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 500px) {
+      .wallet-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-buttons {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <button class="support-btn" onclick="toggleSupport()">🗣️ Support</button>
+    <h3>Trustcode</h3>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <!-- Telegram Support Modal -->
+  <div class="support-modal" id="supportBox">
+    <a href="https://t.me/trustcodechannel" target="_blank">📢 Telegram Channel</a>
+    <a href="https://t.me/trustcodesupport" target="_blank">💬 Customer Support</a>
+  </div>
+
+  <!-- Banner -->
+  <div class="banner">
+    👋 Welcome to <strong>TRUSTCODE INVESTMENT</strong>
+  </div>
+
+  <!-- Wallet Info -->
+  <div class="wallet-info">
+    <div><strong id="userName">Name</strong></div>
+    <div><span id="userEmail">email@example.com</span></div>
+
+    <div class="wallet-stats">
+      <div class="wallet-box">Balance <strong>KES <span id="wallet">0</span></strong></div>
+      <div class="wallet-box">Cashouts <strong>KES <span id="cashouts">0.00</span></strong></div>
+      <div class="wallet-box">Expense <strong>KES <span id="expense">0.00</span></strong></div>
+      <div class="wallet-box">Daily Income <strong>KES <span id="income">0.00</span></strong></div>
+    </div>
+  </div>
+
+  <!-- Quick Access -->
+  <div class="quick-access">
+    <h3>Quick Access</h3>
+    <div class="grid-buttons">
+      <a href="deposit.html">💳<br>Deposit</a>
+      <a href="invest.html">📈<br>Invest</a>
+      <a href="withdrawal.html">💸<br>Cashout</a>
+      <a href="agent.html">👥<br>Team</a>
+      <a href="profile.html">👤<br>Profile</a>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="index.html"><span>🏠</span>Home</a>
+    <a href="invest.html"><span>📦</span>Packages</a>
+    <a href="agent.html"><span>👥</span>Invite</a>
+    <a href="profile.html"><span>👤</span>Profile</a>
+  </nav>
+
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    function logout() {
+      localStorage.removeItem("user");
+      firebase.auth().signOut().then(() => {
+        window.location.href = "login.html";
+      });
+    }
+
+    function toggleSupport() {
+      const box = document.getElementById("supportBox");
+      box.style.display = box.style.display === "block" ? "none" : "block";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const onLoginPage = window.location.pathname.includes("login.html");
+
+      if ((!user || !user.fullName || !user.email) && !onLoginPage) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      if (user) {
+        document.getElementById("userName").textContent = user.fullName;
+        document.getElementById("userEmail").textContent = user.email;
+        document.getElementById("wallet").textContent = user.wallet || 0;
+        // Placeholders - you should fetch and update below values properly
+        document.getElementById("cashouts").textContent = user.cashouts || "0.00";
+        document.getElementById("expense").textContent = user.expense || "0.00";
+        document.getElementById("income").textContent = user.dailyIncome || "0.00";
+      }
+    });
+  </script>
+</body>
+</html>

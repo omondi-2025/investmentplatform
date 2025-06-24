@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invest - Trustcode</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f4f8fb;
+      padding: 1rem;
+    }
+    header {
+      background-color: #004aad;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .wallet {
+      font-weight: bold;
+      margin: 1rem 0;
+      color: green;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px;
+    }
+    .card {
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      transition: transform 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #004aad;
+    }
+    .card p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+    .card button {
+      margin-top: 10px;
+      padding: 8px;
+      background-color: #004aad;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .card button:hover {
+      background-color: #003380;
+    }
+    .alert {
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-size: 14px;
+      text-align: center;
+    }
+    .alert.success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .alert.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>📈 Investment Plans</h2>
+  </header>
+
+  <div class="wallet" id="walletBalance">Wallet: KES 0.00</div>
+  <div class="plans" id="plansContainer"></div>
+  <div id="investMessage"></div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="auth.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    const investmentPlans = [
+      { amount: 300, daily: 80, duration: 7 },
+      { amount: 500, daily: 130, duration: 45 },
+      { amount: 900, daily: 240, duration: 45 },
+      { amount: 1700, daily: 453, duration: 45 },
+      { amount: 5000, daily: 1330, duration: 45 },
+      { amount: 10000, daily: 2660, duration: 45 }
+    ];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await protectPage();
+      let user = getCurrentUser();
+      if (!user || !user.uid) return;
+
+      const msg = document.getElementById("investMessage");
+      const walletEl = document.getElementById("walletBalance");
+
+      async function refreshWallet() {
+        const latestDoc = await db.collection("users").doc(user.uid).get();
+        const updated = latestDoc.data();
+        if (updated) {
+          user = updated;
+          walletEl.textContent = `Wallet: KES ${updated.wallet?.toFixed(2) || 0}`;
+        }
+      }
+
+      await refreshWallet();
+
+      const plansContainer = document.getElementById("plansContainer");
+      investmentPlans.forEach(plan => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <h3>Invest KES ${plan.amount}</h3>
+          <p>Earn KES ${plan.daily}/day</p>
+          <p>Period: ${plan.duration} days</p>
+          <button>Invest</button>
+        `;
+        div.querySelector("button").addEventListener("click", async () => {
+          msg.textContent = "";
+          msg.className = "alert";
+
+          if (user.wallet < plan.amount) {
+            msg.textContent = "❌ Insufficient wallet balance.";
+            msg.classList.add("error");
+            return;
+          }
+
+          try {
+            await db.collection("investments").add({
+              uid: user.uid,
+              name: user.fullName || "Anonymous",
+              phone: user.phone || "",
+              planAmount: plan.amount,
+              dailyEarning: plan.daily,
+              duration: plan.duration,
+              status: "active",
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await db.collection("users").doc(user.uid).update({
+              wallet: user.wallet - plan.amount
+            });
+
+            msg.textContent = `✅ You invested KES ${plan.amount}. You'll earn KES ${plan.daily}/day for ${plan.duration} days.`;
+            msg.classList.add("success");
+            await refreshWallet();
+          } catch (err) {
+            console.error("Investment failed:", err);
+            msg.textContent = "❌ Error occurred. Try again.";
+            msg.classList.add("error");
+          }
+        });
+        plansContainer.appendChild(div);
+      });
+    });
+  </script>
+</body>
+</html>

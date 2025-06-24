@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trustcode - Sign Up</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .signup-box {
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+    h2 {
+      text-align: center;
+      color: #004aad;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 20px;
+      background: #0077ff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #004aad;
+    }
+    .alert {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .switch {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .switch a {
+      color: #004aad;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="signup-box">
+    <h2>Create Account</h2>
+    <form id="signupForm">
+      <label for="fullName">Full Name</label>
+      <input type="text" id="fullName" required placeholder="Your full name" />
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" required placeholder="e.g. 0712345678 or 0112345678" />
+
+      <label for="email">Email</label>
+      <input type="email" id="email" required placeholder="e.g. name@example.com" />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required minlength="6" placeholder="Minimum 6 characters" />
+
+      <button type="submit">Sign Up</button>
+      <div id="signupMessage"></div>
+    </form>
+
+    <div class="switch">
+      Already have an account?
+      <a id="loginLink" href="login.html">Login instead</a>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
+      authDomain: "trustcode-b3e36.firebaseapp.com",
+      projectId: "trustcode-b3e36",
+      storageBucket: "trustcode-b3e36.appspot.com",
+      messagingSenderId: "978590002424",
+      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const signupForm = document.getElementById("signupForm");
+    const signupMessage = document.getElementById("signupMessage");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const referredBy = urlParams.get("ref") || null;
+    const loginLink = document.getElementById("loginLink");
+    if (referredBy) loginLink.href = `login.html?ref=${referredBy}`;
+
+    function generateRefCode() {
+      return Math.floor(10000 + Math.random() * 90000).toString();
+    }
+
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const fullName = document.getElementById("fullName").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const refCode = generateRefCode();
+
+      signupMessage.textContent = "";
+
+      if (!/^0(1|7)[0-9]{8}$/.test(phone)) {
+        signupMessage.textContent = "❌ Please enter a valid Kenyan phone number.";
+        signupMessage.className = "alert error";
+        return;
+      }
+
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        const userData = {
+          uid: user.uid,
+          fullName,
+          phone,
+          email,
+          refCode,
+          referredBy,
+          wallet: 0,
+          createdAt: new Date()
+        };
+
+        await db.collection("users").doc(user.uid).set(userData);
+
+        localStorage.setItem("user", JSON.stringify({
+          uid: user.uid,
+          fullName,
+          phone,
+          email,
+          refCode,
+          wallet: 0
+        }));
+
+        signupMessage.textContent = "✅ Account created successfully! Welcome...";
+        signupMessage.className = "alert success";
+        setTimeout(() => window.location.href = "index.html", 1500);
+      } catch (err) {
+        console.error("Signup failed:", err);
+        signupMessage.textContent = "❌ Something went wrong. Please try again.";
+        signupMessage.className = "alert error";
+      }
+    });
+  </script>
+</body>
+</html>
