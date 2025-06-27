@@ -123,7 +123,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- Your shared auth helper -->
+  <!-- Shared Auth Logic -->
   <script src="auth.js"></script>
 
   <script>
@@ -136,7 +136,11 @@
       appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    // Initialize Firebase once
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
     const auth = firebase.auth();
     const db = firebase.firestore();
 
@@ -144,7 +148,7 @@
     const loginMessage = document.getElementById("loginMessage");
     const signupLink = document.getElementById("signupLink");
 
-    // Preserve referral code if passed in the URL
+    // Pass referral code to signup if available
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get("ref");
     if (refCode) {
@@ -165,11 +169,11 @@
         const user = userCredential.user;
 
         const doc = await db.collection("users").doc(user.uid).get();
-        if (!doc.exists) throw new Error("User profile not found");
+        if (!doc.exists) throw new Error("User profile not found.");
 
-        const data = doc.data();
-        data.uid = user.uid; // ✅ Important for auth.js
-        storeUserLocally(data); // ✅ Uses auth.js method
+        const userData = doc.data();
+        userData.uid = user.uid; // Include UID for local storage
+        storeUserLocally(userData); // ✅ Your auth.js helper
 
         loginMessage.textContent = "✅ Login successful! Redirecting...";
         loginMessage.className = "alert success";
@@ -178,8 +182,8 @@
           window.location.href = "index.html";
         }, 1500);
       } catch (err) {
-        console.error("Login error:", err);
-        loginMessage.textContent = "❌ Invalid email or password. Please try again.";
+        console.error("Login error:", err.message);
+        loginMessage.textContent = err.message || "❌ Login failed. Try again.";
         loginMessage.className = "alert error";
       }
     });

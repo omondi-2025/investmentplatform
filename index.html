@@ -249,7 +249,12 @@
       messagingSenderId: "978590002424",
       appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    const db = firebase.firestore();
   </script>
 
   <!-- Authentication Logic -->
@@ -271,7 +276,7 @@
       if (!user) return;
 
       document.getElementById("userName").textContent = user.fullName || "User";
-      document.getElementById("userEmail").textContent = user.email || "";
+      document.getElementById("userEmail").textContent = user.email || "email@example.com";
       document.getElementById("wallet").textContent = user.wallet || 0;
       document.getElementById("cashouts").textContent = user.cashouts || "0.00";
       document.getElementById("expense").textContent = user.expense || "0.00";

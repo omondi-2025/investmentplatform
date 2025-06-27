@@ -1,4 +1,4 @@
-// auth.js - Trustcode Authentication Helper
+// auth.js - Trustcode Full Auth System
 
 // Firebase Config
 const firebaseConfig = {
@@ -10,7 +10,7 @@ const firebaseConfig = {
   appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
 };
 
-// Initialize Firebase only once
+// Initialize Firebase
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -18,20 +18,26 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// LocalStorage key
 const LOCAL_STORAGE_KEY = "user";
 
 /**
- * Get current user (from Firebase Auth + LocalStorage)
+ * Save user to localStorage
+ */
+function storeUserLocally(userData) {
+  if (!userData?.uid) return;
+  userData.lastUpdated = Date.now();
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userData));
+}
+
+/**
+ * Get user from localStorage or Firebase
  */
 function getCurrentUser() {
   const firebaseUser = auth.currentUser;
+  const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
 
-  // Use Firebase Auth first
-  if (firebaseUser && firebaseUser.uid) {
-    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
+  if (firebaseUser?.uid) {
     if (!stored || stored.uid !== firebaseUser.uid) {
-      // If no local or mismatched, return minimal Firebase user
       return {
         uid: firebaseUser.uid,
         email: firebaseUser.email
@@ -40,98 +46,78 @@ function getCurrentUser() {
     return stored;
   }
 
-  // Fallback to localStorage
-  try {
-    const user = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-    return user && user.uid ? user : null;
-  } catch (err) {
-    console.warn("⚠️ getCurrentUser() failed:", err);
-    return null;
-  }
+  return stored?.uid ? stored : null;
 }
 
 /**
- * Save user to localStorage with lastUpdated timestamp
- */
-function storeUserLocally(data) {
-  if (!data || !data.uid) {
-    console.error("❌ storeUserLocally: Missing UID");
-    return;
-  }
-  data.lastUpdated = Date.now();
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-}
-
-/**
- * Check if local user data is stale (older than 1 hour)
+ * Check if stored user data is stale (older than 1 hour)
  */
 function isDataStale(user) {
-  if (!user?.lastUpdated) return true;
-  return Date.now() - user.lastUpdated > 60 * 60 * 1000; // 1 hour
+  return !user?.lastUpdated || (Date.now() - user.lastUpdated > 60 * 60 * 1000);
 }
 
 /**
- * Reload user data from Firestore and store locally
+ * Load fresh user data from Firestore
  */
 async function loadUserData(uid) {
   try {
     const doc = await db.collection("users").doc(uid).get();
-    if (!doc.exists) {
-      console.warn("⚠️ No user found in Firestore for UID:", uid);
-      return null;
-    }
+    if (!doc.exists) return null;
     const data = doc.data();
     data.uid = uid;
     storeUserLocally(data);
     return data;
   } catch (err) {
-    console.error("❌ loadUserData failed:", err);
+    console.error("loadUserData failed:", err);
     return null;
   }
 }
 
 /**
- * Protect page: Requires login, optionally restrict by role
+ * Sign up a new user
  */
-async function protectPage(requiredRole = null) {
-  let user = getCurrentUser();
+async function signUpUser(email, password, fullName, phone) {
+  try {
+    const userCred = await auth.createUserWithEmailAndPassword(email, password);
+    const uid = userCred.user.uid;
 
-  // No user? redirect to login
-  if (!user || !user.uid) {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    window.location.href = "login.html";
-    return;
-  }
+    const userData = {
+      uid,
+      email,
+      fullName,
+      phone,
+      role: "user",
+      wallet: 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
-  // Reload user if stale or missing full profile
-  if (isDataStale(user) || !user.fullName) {
-    const freshUser = await loadUserData(user.uid);
-    if (!freshUser) {
-      logoutUser("Your session has expired. Please log in again.");
-      return;
-    }
-    user = freshUser;
-  }
-
-  // Role-based access control
-  if (requiredRole && user.role !== requiredRole) {
-    alert("You are not authorized to access this page.");
-    window.location.href = "index.html";
+    await db.collection("users").doc(uid).set(userData);
+    storeUserLocally(userData);
+    return { success: true };
+  } catch (err) {
+    console.error("Sign up error:", err);
+    return { success: false, message: err.message };
   }
 }
 
 /**
- * Redirect to homepage if already logged in
+ * Login user
  */
-function redirectIfLoggedIn() {
-  const user = getCurrentUser();
-  if (user && !isDataStale(user)) {
-    window.location.href = "index.html";
+async function loginUser(email, password) {
+  try {
+    const userCred = await auth.signInWithEmailAndPassword(email, password);
+    const uid = userCred.user.uid;
+    const data = await loadUserData(uid);
+    if (data) return { success: true };
+    else return { success: false, message: "User data missing" };
+  } catch (err) {
+    console.error("Login error:", err);
+    return { success: false, message: err.message };
   }
 }
 
 /**
- * Log out user cleanly
+ * Logout user
  */
 function logoutUser(message = null) {
   auth.signOut().finally(() => {
@@ -142,21 +128,58 @@ function logoutUser(message = null) {
 }
 
 /**
- * Auto sync Firestore user on login
+ * Protect a page (optional: enforce role)
+ */
+async function protectPage(requiredRole = null) {
+  let user = getCurrentUser();
+
+  if (!user?.uid) {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    window.location.href = "login.html";
+    return;
+  }
+
+  if (isDataStale(user) || !user.fullName) {
+    const fresh = await loadUserData(user.uid);
+    if (!fresh) {
+      logoutUser("Session expired. Please log in again.");
+      return;
+    }
+    user = fresh;
+  }
+
+  if (requiredRole && user.role !== requiredRole) {
+    alert("Access denied.");
+    window.location.href = "index.html";
+  }
+}
+
+/**
+ * Redirect if user is already logged in
+ */
+function redirectIfLoggedIn() {
+  const user = getCurrentUser();
+  if (user && !isDataStale(user)) {
+    window.location.href = "index.html";
+  }
+}
+
+/**
+ * Automatically sync Firestore user on login
  */
 auth.onAuthStateChanged(async (firebaseUser) => {
-  if (firebaseUser && firebaseUser.uid) {
+  if (firebaseUser?.uid) {
     const data = await loadUserData(firebaseUser.uid);
-    if (data) {
-      storeUserLocally(data);
-    }
+    if (data) storeUserLocally(data);
   }
 });
 
 // Export to global scope
 window.getCurrentUser = getCurrentUser;
 window.storeUserLocally = storeUserLocally;
+window.loadUserData = loadUserData;
+window.signUpUser = signUpUser;
+window.loginUser = loginUser;
+window.logoutUser = logoutUser;
 window.protectPage = protectPage;
 window.redirectIfLoggedIn = redirectIfLoggedIn;
-window.logoutUser = logoutUser;
-window.loadUserData = loadUserData;
