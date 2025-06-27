@@ -156,7 +156,7 @@
       apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
       authDomain: "trustcode-b3e36.firebaseapp.com",
       projectId: "trustcode-b3e36",
-      storageBucket: "trustcode-b3e36.appspot.com",
+      storageBucket: "trustcode-b3e36.firebasestorage.app",
       messagingSenderId: "978590002424",
       appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
     };
@@ -164,7 +164,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const mpesaNumbers = ["0116699212", "0115106550", "0111112222", "0112223333", "0113334444"];
+    const mpesaNumbers = ["0116699212", "0115106550"];
     function getCurrentMpesaNumber() {
       const index = Math.floor(Date.now() / (15 * 60 * 1000)) % mpesaNumbers.length;
       return mpesaNumbers[index];
