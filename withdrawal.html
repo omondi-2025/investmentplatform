@@ -143,19 +143,21 @@
 
     document.addEventListener("DOMContentLoaded", async () => {
       protectPage();
-      const user = getCurrentUser();
+      let user = getCurrentUser();
       if (!user || !user.uid) return;
 
       const walletBalanceEl = document.getElementById("walletBalance");
       const withdrawForm = document.getElementById("withdrawForm");
       const withdrawMessage = document.getElementById("withdrawMessage");
       const historyList = document.getElementById("historyList");
+      const phoneInput = document.getElementById("phone");
 
       async function loadWallet() {
         try {
           const doc = await db.collection("users").doc(user.uid).get();
           const data = doc.data();
           walletBalanceEl.textContent = (data.wallet || 0).toFixed(2);
+          phoneInput.value = data.phone || "";
         } catch (err) {
           walletBalanceEl.textContent = "0.00";
         }
@@ -203,7 +205,7 @@
         }
 
         const amount = parseFloat(document.getElementById("amount").value);
-        const phone = document.getElementById("phone").value.trim();
+        const phone = phoneInput.value.trim();
 
         if (isNaN(amount) || amount < 150) {
           withdrawMessage.textContent = "❌ Minimum withdrawal amount is Ksh 150.";

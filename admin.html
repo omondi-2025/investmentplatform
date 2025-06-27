@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard - Trustcode</title>
+  <title>Admin Dashboard - Recharges</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
     body {
@@ -19,7 +19,7 @@
       text-align: center;
     }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 20px auto;
       padding: 0 15px;
     }
@@ -54,18 +54,34 @@
       font-size: 14px;
       color: #666;
     }
+    .actions button {
+      margin-top: 10px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .approve {
+      background-color: #28a745;
+      color: white;
+    }
+    .reject {
+      background-color: #dc3545;
+      color: white;
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Admin Dashboard - Investments</h1>
+    <h1>Admin Dashboard - Recharges</h1>
   </header>
 
   <div class="container">
     <div id="adminMessage" class="alert"></div>
-    <h2>Recent Investments</h2>
-    <div id="investmentList">
-      <p>Loading investment records...</p>
+    <h2>Pending Recharges</h2>
+    <div id="rechargeList">
+      <p>Loading recharge requests...</p>
     </div>
   </div>
 
@@ -89,50 +105,82 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    const adminEmails = ["admin@trustcode.com"]; // Add more admins here
+    const adminEmails = ["admin@trustcode.com"];
     const adminMessage = document.getElementById("adminMessage");
-    const investmentList = document.getElementById("investmentList");
+    const rechargeList = document.getElementById("rechargeList");
+
+    function renderRecharge(doc) {
+      const data = doc.data();
+      const date = data.createdAt?.toDate().toLocaleString() || "N/A";
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <p><strong>Name:</strong> ${data.name}</p>
+        <p><strong>Phone:</strong> ${data.phone}</p>
+        <p><strong>Amount:</strong> KES ${data.amount}</p>
+        <p><strong>Message:</strong> ${data.message}</p>
+        <p class="timestamp"><strong>Date:</strong> ${date}</p>
+        <div class="actions">
+          <button class="approve" onclick="approveRecharge('${doc.id}', ${data.amount}, '${data.uid}')">Approve</button>
+          <button class="reject" onclick="rejectRecharge('${doc.id}')">Reject</button>
+        </div>
+      `;
+      rechargeList.appendChild(card);
+    }
+
+    async function approveRecharge(id, amount, uid) {
+      try {
+        const userDoc = await db.collection("users").doc(uid).get();
+        const userData = userDoc.data();
+        const newWallet = (userData.wallet || 0) + amount;
+
+        await db.collection("users").doc(uid).update({ wallet: newWallet });
+        await db.collection("recharges").doc(id).update({ status: "approved" });
+        location.reload();
+      } catch (err) {
+        alert("Failed to approve recharge: " + err.message);
+      }
+    }
+
+    async function rejectRecharge(id) {
+      if (confirm("Are you sure you want to reject this recharge?")) {
+        try {
+          await db.collection("recharges").doc(id).update({ status: "rejected" });
+          location.reload();
+        } catch (err) {
+          alert("Failed to reject recharge: " + err.message);
+        }
+      }
+    }
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
         window.location.href = "login.html";
         return;
       }
-
       if (!adminEmails.includes(user.email)) {
         adminMessage.textContent = "❌ You are not authorized to access this page.";
         adminMessage.className = "alert error";
-        investmentList.innerHTML = "";
+        rechargeList.innerHTML = "";
         return;
       }
 
       try {
-        const snapshot = await db.collection("investments").orderBy("createdAt", "desc").get();
+        const snapshot = await db.collection("recharges")
+          .where("status", "==", "confirmed")
+          .orderBy("createdAt", "desc")
+          .get();
 
         if (snapshot.empty) {
-          investmentList.innerHTML = "<p>No investments found.</p>";
+          rechargeList.innerHTML = "<p>No pending recharges found.</p>";
           return;
         }
 
-        investmentList.innerHTML = ""; // clear loading message
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const createdAt = data.createdAt?.toDate().toLocaleString() || "N/A";
-
-          const card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML = `
-            <p><strong>Name:</strong> ${data.name}</p>
-            <p><strong>Phone:</strong> ${data.phone}</p>
-            <p><strong>Amount:</strong> Ksh ${data.planAmount}</p>
-            <p><strong>Plan:</strong> ${data.planName || 'N/A'}</p>
-            <p class="timestamp"><strong>Date:</strong> ${createdAt}</p>
-          `;
-          investmentList.appendChild(card);
-        });
+        rechargeList.innerHTML = "";
+        snapshot.forEach(renderRecharge);
       } catch (err) {
-        console.error("Error loading investments:", err);
-        adminMessage.textContent = "❌ Failed to load investment records.";
+        console.error("Error loading recharges:", err);
+        adminMessage.textContent = "❌ Failed to load recharge records.";
         adminMessage.className = "alert error";
       }
     });

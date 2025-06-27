@@ -22,9 +22,25 @@ const db = firebase.firestore();
 const LOCAL_STORAGE_KEY = "user";
 
 /**
- * Get current user from localStorage
+ * Get current user (from Firebase Auth + LocalStorage)
  */
 function getCurrentUser() {
+  const firebaseUser = auth.currentUser;
+
+  // Use Firebase Auth first
+  if (firebaseUser && firebaseUser.uid) {
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
+    if (!stored || stored.uid !== firebaseUser.uid) {
+      // If no local or mismatched, return minimal Firebase user
+      return {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email
+      };
+    }
+    return stored;
+  }
+
+  // Fallback to localStorage
   try {
     const user = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
     return user && user.uid ? user : null;
@@ -47,7 +63,7 @@ function storeUserLocally(data) {
 }
 
 /**
- * Check if local user data is stale (1 hour)
+ * Check if local user data is stale (older than 1 hour)
  */
 function isDataStale(user) {
   if (!user?.lastUpdated) return true;
@@ -55,7 +71,7 @@ function isDataStale(user) {
 }
 
 /**
- * Reload user data from Firestore
+ * Reload user data from Firestore and store locally
  */
 async function loadUserData(uid) {
   try {
@@ -80,14 +96,15 @@ async function loadUserData(uid) {
 async function protectPage(requiredRole = null) {
   let user = getCurrentUser();
 
+  // No user? redirect to login
   if (!user || !user.uid) {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     window.location.href = "login.html";
     return;
   }
 
-  // Refresh if stale
-  if (isDataStale(user)) {
+  // Reload user if stale or missing full profile
+  if (isDataStale(user) || !user.fullName) {
     const freshUser = await loadUserData(user.uid);
     if (!freshUser) {
       logoutUser("Your session has expired. Please log in again.");
@@ -96,7 +113,7 @@ async function protectPage(requiredRole = null) {
     user = freshUser;
   }
 
-  // Role-based protection
+  // Role-based access control
   if (requiredRole && user.role !== requiredRole) {
     alert("You are not authorized to access this page.");
     window.location.href = "index.html";
@@ -123,6 +140,18 @@ function logoutUser(message = null) {
     window.location.href = "login.html";
   });
 }
+
+/**
+ * Auto sync Firestore user on login
+ */
+auth.onAuthStateChanged(async (firebaseUser) => {
+  if (firebaseUser && firebaseUser.uid) {
+    const data = await loadUserData(firebaseUser.uid);
+    if (data) {
+      storeUserLocally(data);
+    }
+  }
+});
 
 // Export to global scope
 window.getCurrentUser = getCurrentUser;

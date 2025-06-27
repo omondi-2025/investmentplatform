@@ -35,35 +35,14 @@
       padding: 15px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       text-align: center;
-      cursor: pointer;
-      transition: 0.3s;
     }
-    .card:hover {
-      transform: translateY(-5px);
-      border: 2px solid #004aad;
-    }
-    .card.selected {
-      background-color: #e6f0ff;
-      border: 3px solid #004aad;
-    }
-    form {
-      background: #fff;
-      margin-top: 20px;
-      padding: 1rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    form input, form button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      font-size: 16px;
-    }
-    form button {
+    .card button {
       background-color: #004aad;
       color: white;
       border: none;
+      padding: 8px 12px;
       border-radius: 5px;
+      margin-top: 10px;
       cursor: pointer;
     }
     .alert {
@@ -81,10 +60,15 @@
       background: #f8d7da;
       color: #721c24;
     }
-    @media (max-width: 600px) {
-      .plans {
-        grid-template-columns: 1fr;
-      }
+    .history {
+      margin-top: 2rem;
+    }
+    .history-entry {
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
   </style>
 </head>
@@ -95,14 +79,12 @@
 
   <div class="wallet" id="walletBalance">Wallet: KES ...</div>
   <div class="plans" id="plansContainer"></div>
+  <div id="investMessage"></div>
 
-  <form id="investForm">
-    <input type="hidden" id="planAmount" />
-    <label for="investorPhone">Phone Number</label>
-    <input type="tel" id="investorPhone" placeholder="e.g. +254712345678" required />
-    <button type="submit">Invest Now</button>
-    <div id="investMessage"></div>
-  </form>
+  <div class="history">
+    <h3>Your Previous Investments</h3>
+    <div id="investmentHistory">Loading...</div>
+  </div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -133,22 +115,49 @@
 
     document.addEventListener("DOMContentLoaded", async () => {
       await protectPage();
-      let user = getCurrentUser();
-      if (!user || !user.uid) return;
+      const currentUser = getCurrentUser();
+      if (!currentUser || !currentUser.uid) return;
 
       const walletEl = document.getElementById("walletBalance");
       const msg = document.getElementById("investMessage");
 
-      async function refreshWallet() {
-        const doc = await db.collection("users").doc(user.uid).get();
+      async function refreshWalletAndUser() {
+        const doc = await db.collection("users").doc(currentUser.uid).get();
         const data = doc.data();
-        if (data) {
-          user = data;
-          walletEl.textContent = `Wallet: KES ${data.wallet?.toFixed(2) || 0}`;
-        }
+        walletEl.textContent = `Wallet: KES ${data.wallet?.toFixed(2) || 0}`;
+        return data;
       }
 
-      await refreshWallet();
+      async function loadInvestments() {
+        const container = document.getElementById("investmentHistory");
+        const snap = await db.collection("investments")
+          .where("uid", "==", currentUser.uid)
+          .orderBy("createdAt", "desc")
+          .get();
+
+        if (snap.empty) {
+          container.textContent = "No investments yet.";
+          return;
+        }
+
+        container.innerHTML = "";
+        snap.forEach(doc => {
+          const data = doc.data();
+          const createdAt = data.createdAt?.toDate().toLocaleString() || "Unknown";
+          const div = document.createElement("div");
+          div.className = "history-entry";
+          div.innerHTML = `
+            <strong>Amount:</strong> KES ${data.planAmount} | 
+            <strong>Daily:</strong> KES ${data.dailyEarning} | 
+            <strong>Days:</strong> ${data.duration} <br>
+            <small>${createdAt}</small>
+          `;
+          container.appendChild(div);
+        });
+      }
+
+      const userData = await refreshWalletAndUser();
+      await loadInvestments();
 
       const plansContainer = document.getElementById("plansContainer");
       investmentPlans.forEach(plan => {
@@ -158,74 +167,46 @@
           <h3>Invest KES ${plan.amount}</h3>
           <p>Earn KES ${plan.daily}/day</p>
           <p>Duration: ${plan.duration} days</p>
+          <button>Invest Now</button>
         `;
-        card.addEventListener("click", () => {
-          document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
-          card.classList.add("selected");
-          document.getElementById("planAmount").value = plan.amount;
+        const btn = card.querySelector("button");
+        btn.addEventListener("click", async () => {
+          msg.textContent = "";
+          msg.className = "alert";
+
+          if (userData.wallet < plan.amount) {
+            msg.textContent = "❌ Insufficient wallet balance.";
+            msg.classList.add("error");
+            return;
+          }
+
+          try {
+            await db.collection("investments").add({
+              uid: currentUser.uid,
+              name: userData.fullName || "User",
+              phone: userData.phone || "N/A",
+              planAmount: plan.amount,
+              dailyEarning: plan.daily,
+              duration: plan.duration,
+              status: "active",
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await db.collection("users").doc(currentUser.uid).update({
+              wallet: userData.wallet - plan.amount
+            });
+
+            msg.textContent = `✅ Successfully invested KES ${plan.amount}`;
+            msg.classList.add("success");
+            await refreshWalletAndUser();
+            await loadInvestments();
+          } catch (err) {
+            console.error("Error investing:", err);
+            msg.textContent = "❌ Failed to invest. Try again.";
+            msg.classList.add("error");
+          }
         });
         plansContainer.appendChild(card);
-      });
-
-      document.getElementById("investForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const phone = document.getElementById("investorPhone").value.trim();
-        const amount = parseFloat(document.getElementById("planAmount").value);
-        msg.textContent = "";
-        msg.className = "alert";
-
-        if (!amount) {
-          msg.textContent = "❌ Please select a plan.";
-          msg.classList.add("error");
-          return;
-        }
-
-        if (!/^\+254\d{9}$/.test(phone)) {
-          msg.textContent = "❌ Invalid phone format. Use +2547XXXXXXXX.";
-          msg.classList.add("error");
-          return;
-        }
-
-        const plan = investmentPlans.find(p => p.amount === amount);
-        if (!plan) {
-          msg.textContent = "❌ Plan not found.";
-          msg.classList.add("error");
-          return;
-        }
-
-        if (user.wallet < amount) {
-          msg.textContent = "❌ Insufficient wallet balance.";
-          msg.classList.add("error");
-          return;
-        }
-
-        try {
-          await db.collection("investments").add({
-            uid: user.uid,
-            name: user.fullName || "User",
-            phone,
-            planAmount: plan.amount,
-            dailyEarning: plan.daily,
-            duration: plan.duration,
-            status: "active",
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          await db.collection("users").doc(user.uid).update({
-            wallet: user.wallet - amount
-          });
-
-          msg.textContent = `✅ You invested KES ${amount}. You'll earn KES ${plan.daily}/day for ${plan.duration} days.`;
-          msg.classList.add("success");
-
-          await refreshWallet();
-          e.target.reset();
-          document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
-        } catch (err) {
-          console.error("Investment failed:", err);
-          msg.textContent = "❌ Error occurred. Try again.";
-          msg.classList.add("error");
-        }
       });
     });
   </script>

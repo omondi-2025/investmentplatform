@@ -18,7 +18,7 @@
       text-align: center;
     }
     .container {
-      max-width: 700px;
+      max-width: 800px;
       margin: 30px auto;
       background: #fff;
       border-radius: 10px;
@@ -27,6 +27,7 @@
     }
     h3 {
       color: #004aad;
+      margin-top: 0;
     }
     p {
       font-size: 16px;
@@ -81,15 +82,16 @@
         <span id="refLink">Generating...</span>
         <button onclick="copyRefLink()">Copy Link</button>
       </p>
-      <p>
-        Share this link to earn
-        <span class="badge lv1">LV1 Rebate 20%</span> and
-        <span class="badge lv2">LV2 Rebate 1%</span> commissions when your referrals invest.
-      </p>
+    </section>
+
+    <section style="margin-top: 20px;">
+      <h3>Total Referral Stats</h3>
+      <p><strong>Total Earnings:</strong> KES <span id="totalEarnings">0.00</span></p>
+      <p><strong>Total Referred Users:</strong> <span id="totalUsers">0</span></p>
     </section>
 
     <section style="margin-top: 30px;">
-      <h3>My Referrals</h3>
+      <h3>Referral Details</h3>
       <ul id="referralsList" class="card-list">
         <li>Loading referrals...</li>
       </ul>
@@ -100,7 +102,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
   <script src="auth.js"></script>
 
   <script>
@@ -132,78 +133,69 @@
       document.getElementById("refLink").textContent = refLink;
 
       const list = document.getElementById("referralsList");
+      const totalEarningsEl = document.getElementById("totalEarnings");
+      const totalUsersEl = document.getElementById("totalUsers");
+
+      let totalEarnings = 0;
+      let totalUsers = 0;
       list.innerHTML = "";
 
       try {
-        const snapshot = await db.collection("users")
-          .where("referredBy", "==", refCode)
-          .get();
+        const lv1Snapshot = await db.collection("users").where("referredBy", "==", refCode).get();
 
-        if (snapshot.empty) {
-          list.innerHTML = "<li>No referrals yet.</li>";
-        } else {
-          for (const doc of snapshot.docs) {
-            const data = doc.data();
+        for (const doc of lv1Snapshot.docs) {
+          const data = doc.data();
+          const investments = await db.collection("investments").where("uid", "==", data.uid).get();
 
-            const investmentSnap = await db.collection("investments")
-              .where("uid", "==", data.uid)
-              .get();
+          let invested = 0;
+          investments.forEach(inv => invested += inv.data().planAmount || 0);
+          const earning = invested * 0.20;
+          totalEarnings += earning;
+          totalUsers++;
 
-            let totalInvested = 0;
-            let referralEarning = 0;
-            investmentSnap.forEach(inv => {
-              totalInvested += inv.data().planAmount || 0;
-              referralEarning += inv.data().planAmount * 0.20;
-            });
-
-            const li = document.createElement("li");
-            li.className = "card";
-            li.innerHTML = `
+          list.innerHTML += `
+            <li class="card">
               <strong>${data.fullName}</strong><br>
-              ${data.email} | ${data.phone}<br>
-              <strong>Invested:</strong> KES ${totalInvested}<br>
-              <strong>Your Earnings (20%):</strong> KES ${referralEarning.toFixed(2)}
-              <span class="badge lv1">LV1</span>
-            `;
-            list.appendChild(li);
+              ${data.email}<br>
+              <strong>Level:</strong> LV1 <span class="badge lv1">LV1</span><br>
+              <strong>Invested:</strong> KES ${invested}<br>
+              <strong>Your Earnings:</strong> KES ${earning.toFixed(2)}
+            </li>
+          `;
 
-            // Load level 2 referrals
-            const lv2Snap = await db.collection("users")
-              .where("referredBy", "==", data.refCode)
-              .get();
+          const lv2Snap = await db.collection("users").where("referredBy", "==", data.refCode).get();
+          for (const lv2 of lv2Snap.docs) {
+            const lv2Data = lv2.data();
+            const lv2Inv = await db.collection("investments").where("uid", "==", lv2Data.uid).get();
 
-            for (const lv2 of lv2Snap.docs) {
-              const lv2Data = lv2.data();
-              const lv2InvSnap = await db.collection("investments")
-                .where("uid", "==", lv2Data.uid)
-                .get();
+            let lv2Invested = 0;
+            lv2Inv.forEach(inv => lv2Invested += inv.data().planAmount || 0);
+            const lv2Earning = lv2Invested * 0.01;
 
-              let lv2Total = 0;
-              let lv2Earning = 0;
-              lv2InvSnap.forEach(inv => {
-                lv2Total += inv.data().planAmount || 0;
-                lv2Earning += inv.data().planAmount * 0.01;
-              });
+            totalEarnings += lv2Earning;
+            totalUsers++;
 
-              const li2 = document.createElement("li");
-              li2.className = "card";
-              li2.innerHTML = `
+            list.innerHTML += `
+              <li class="card">
                 <strong>${lv2Data.fullName}</strong><br>
-                ${lv2Data.email} | ${lv2Data.phone}<br>
-                <strong>Invested:</strong> KES ${lv2Total}<br>
-                <strong>Your Earnings (1%):</strong> KES ${lv2Earning.toFixed(2)}
-                <span class="badge lv2">LV2</span>
-              `;
-              list.appendChild(li2);
-            }
+                ${lv2Data.email}<br>
+                <strong>Level:</strong> LV2 <span class="badge lv2">LV2</span><br>
+                <strong>Invested:</strong> KES ${lv2Invested}<br>
+                <strong>Your Earnings:</strong> KES ${lv2Earning.toFixed(2)}
+              </li>
+            `;
           }
         }
+
+        totalEarningsEl.textContent = totalEarnings.toFixed(2);
+        totalUsersEl.textContent = totalUsers;
+
+        if (totalUsers === 0) list.innerHTML = "<li>No referrals yet.</li>";
       } catch (err) {
-        console.error("Error fetching referrals:", err);
+        console.error("Error loading referral data:", err);
         list.innerHTML = "<li>Error loading referrals.</li>";
       }
     });
   </script>
-
 </body>
 </html>

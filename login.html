@@ -123,6 +123,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+  <!-- Your shared auth helper -->
+  <script src="auth.js"></script>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
@@ -162,12 +165,11 @@
         const user = userCredential.user;
 
         const doc = await db.collection("users").doc(user.uid).get();
-        if (!doc.exists) {
-          throw new Error("Account data not found.");
-        }
+        if (!doc.exists) throw new Error("User profile not found");
 
         const data = doc.data();
-        localStorage.setItem("user", JSON.stringify(data));
+        data.uid = user.uid; // ✅ Important for auth.js
+        storeUserLocally(data); // ✅ Uses auth.js method
 
         loginMessage.textContent = "✅ Login successful! Redirecting...";
         loginMessage.className = "alert success";

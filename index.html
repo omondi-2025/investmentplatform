@@ -31,6 +31,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
 
     .support-btn, header button {
@@ -103,7 +106,7 @@
 
     .grid-buttons {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       gap: 1rem;
     }
 
@@ -116,10 +119,6 @@
       border-radius: 10px;
       font-weight: 500;
       transition: all 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
     }
 
     .grid-buttons a:hover {
@@ -185,34 +184,26 @@
       .wallet-stats {
         grid-template-columns: 1fr;
       }
-
-      .grid-buttons {
-        grid-template-columns: repeat(2, 1fr);
-      }
     }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
   <header>
     <button class="support-btn" onclick="toggleSupport()">🗣️ Support</button>
     <h3>Trustcode</h3>
     <button onclick="logout()">Logout</button>
   </header>
 
-  <!-- Telegram Support Modal -->
   <div class="support-modal" id="supportBox">
     <a href="https://t.me/trustcodechannel" target="_blank">📢 Telegram Channel</a>
     <a href="https://t.me/trustcodesupport" target="_blank">💬 Customer Support</a>
   </div>
 
-  <!-- Banner -->
   <div class="banner">
     👋 Welcome to <strong>TRUSTCODE INVESTMENT</strong>
   </div>
 
-  <!-- Wallet Info -->
   <div class="wallet-info">
     <div><strong id="userName">Name</strong></div>
     <div><span id="userEmail">email@example.com</span></div>
@@ -225,7 +216,6 @@
     </div>
   </div>
 
-  <!-- Quick Access -->
   <div class="quick-access">
     <h3>Quick Access</h3>
     <div class="grid-buttons">
@@ -237,7 +227,6 @@
     </div>
   </div>
 
-  <!-- Bottom Navigation -->
   <nav class="bottom-nav">
     <a href="index.html"><span>🏠</span>Home</a>
     <a href="invest.html"><span>📦</span>Packages</a>
@@ -245,9 +234,12 @@
     <a href="profile.html"><span>👤</span>Profile</a>
   </nav>
 
-  <!-- Firebase Scripts -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Firebase Config -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
@@ -258,12 +250,13 @@
       appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
     };
     firebase.initializeApp(firebaseConfig);
+  </script>
 
+  <!-- Authentication Logic -->
+  <script src="auth.js"></script>
+  <script>
     function logout() {
-      localStorage.removeItem("user");
-      firebase.auth().signOut().then(() => {
-        window.location.href = "login.html";
-      });
+      logoutUser();
     }
 
     function toggleSupport() {
@@ -271,23 +264,18 @@
       box.style.display = box.style.display === "block" ? "none" : "block";
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const onLoginPage = window.location.pathname.includes("login.html");
+    document.addEventListener("DOMContentLoaded", async () => {
+      await protectPage();
 
-      if ((!user || !user.fullName || !user.email) && !onLoginPage) {
-        window.location.href = "login.html";
-        return;
-      }
+      const user = getCurrentUser();
+      if (!user) return;
 
-      if (user) {
-        document.getElementById("userName").textContent = user.fullName;
-        document.getElementById("userEmail").textContent = user.email;
-        document.getElementById("wallet").textContent = user.wallet || 0;
-        document.getElementById("cashouts").textContent = user.cashouts || "0.00";
-        document.getElementById("expense").textContent = user.expense || "0.00";
-        document.getElementById("income").textContent = user.dailyIncome || "0.00";
-      }
+      document.getElementById("userName").textContent = user.fullName || "User";
+      document.getElementById("userEmail").textContent = user.email || "";
+      document.getElementById("wallet").textContent = user.wallet || 0;
+      document.getElementById("cashouts").textContent = user.cashouts || "0.00";
+      document.getElementById("expense").textContent = user.expense || "0.00";
+      document.getElementById("income").textContent = user.dailyIncome || "0.00";
     });
   </script>
 </body>

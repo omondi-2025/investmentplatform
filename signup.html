@@ -102,8 +102,7 @@
     </form>
 
     <div class="switch">
-      Already have an account?
-      <a id="loginLink" href="login.html">Login instead</a>
+      Already have an account? <a id="loginLink" href="login.html">Login instead</a>
     </div>
   </div>
 
@@ -111,6 +110,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- Shared auth helper -->
+  <script src="auth.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -128,10 +130,10 @@
 
     const signupForm = document.getElementById("signupForm");
     const signupMessage = document.getElementById("signupMessage");
+    const loginLink = document.getElementById("loginLink");
 
     const urlParams = new URLSearchParams(window.location.search);
     const referredBy = urlParams.get("ref") || null;
-    const loginLink = document.getElementById("loginLink");
     if (referredBy) loginLink.href = `login.html?ref=${referredBy}`;
 
     function generateRefCode() {
@@ -167,24 +169,18 @@
           refCode,
           referredBy,
           wallet: 0,
-          createdAt: new Date()
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
         await db.collection("users").doc(user.uid).set(userData);
-
-        localStorage.setItem("user", JSON.stringify({
-          uid: user.uid,
-          fullName,
-          phone,
-          email,
-          refCode,
-          wallet: 0
-        }));
+        storeUserLocally(userData); // ✅ uses auth.js to store with timestamp
 
         signupMessage.textContent = "✅ Account created successfully! Redirecting...";
         signupMessage.className = "alert success";
 
-        setTimeout(() => window.location.href = "index.html", 1500);
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1500);
       } catch (err) {
         console.error("Signup failed:", err);
         signupMessage.textContent = "❌ Something went wrong. Please try again.";

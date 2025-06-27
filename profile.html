@@ -2,97 +2,105 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User Profile - Trustcode</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #e6f0ff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       margin: 0;
+      padding: 0;
     }
-
-    .profile-box {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 400px;
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
-
     h2 {
       color: #004aad;
       text-align: center;
     }
-
-    .info {
+    .profile-img {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .profile-img img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .info p {
+      font-size: 16px;
+      margin: 8px 0;
+    }
+    .badge {
+      display: inline-block;
+      background: #004aad;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .wallet {
+      color: green;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .investments {
       margin-top: 20px;
     }
-
-    .info p {
-      margin: 12px 0;
-      font-size: 16px;
-      color: #333;
-    }
-
-    .loading {
-      text-align: center;
-      color: #666;
-      margin-top: 10px;
-    }
-
-    .btn {
-      margin-top: 15px;
-      width: 100%;
+    .investment-card {
+      background: #f1f7ff;
       padding: 12px;
-      background: #0077ff;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      background: #004aad;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 16px;
     }
-
-    .btn:hover {
-      background: #0051aa;
-    }
-
-    .btn.secondary {
+    button.secondary {
       background: #ccc;
       color: #222;
     }
-
-    .btn.secondary:hover {
-      background: #bbb;
-    }
-
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 20px;
+    button:hover {
+      opacity: 0.9;
     }
   </style>
 </head>
 <body>
-  <div class="profile-box">
+  <div class="container">
     <h2>My Profile</h2>
-    <div class="info" id="profileInfo">
+    <div class="profile-img">
+      <img src="default-avatar.png" id="profileImage" alt="Profile Picture" />
+    </div>
+    <div class="info">
       <p><strong>Full Name:</strong> <span id="fullName">Loading...</span></p>
       <p><strong>Phone Number:</strong> <span id="phone">Loading...</span></p>
       <p><strong>Email:</strong> <span id="email">Loading...</span></p>
+      <p><strong>Referral Code:</strong> <span id="refCode">Loading...</span></p>
+      <p class="wallet">Wallet: KES <span id="wallet">...</span></p>
     </div>
-    <p class="loading" id="loadingMsg">Fetching your data...</p>
 
-    <div class="btn-group">
-      <button class="btn" onclick="logout()">Logout</button>
-      <button class="btn secondary" onclick="goToDashboard()">← Back to Dashboard</button>
-      <button class="btn secondary" onclick="goToEdit()">✏️ Edit Profile</button>
+    <div class="investments">
+      <h3>Recent Investments</h3>
+      <div id="investmentsList">Loading investments...</div>
     </div>
+
+    <button onclick="window.location.href='edit-profile.html'">✏️ Edit Profile</button>
+    <button class="secondary" onclick="window.location.href='change-password.html'">🔐 Change Password</button>
+    <button class="secondary" onclick="window.location.href='index.html'">← Back to Dashboard</button>
   </div>
 
   <!-- Firebase SDKs -->
@@ -115,37 +123,45 @@
     const db = firebase.firestore();
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) return location.href = "login.html";
+      if (!user) return location.href = 'login.html';
 
       document.getElementById("email").textContent = user.email;
 
-      try {
-        const doc = await db.collection("users").doc(user.uid).get();
-        if (doc.exists) {
+      const doc = await db.collection("users").doc(user.uid).get();
+      if (doc.exists) {
+        const data = doc.data();
+        document.getElementById("fullName").textContent = data.fullName || 'Not set';
+        document.getElementById("phone").textContent = data.phone || 'Not set';
+        document.getElementById("refCode").textContent = data.refCode || 'None';
+        document.getElementById("wallet").textContent = (data.wallet || 0).toFixed(2);
+      }
+
+      const invSnap = await db.collection("investments")
+        .where("uid", "==", user.uid)
+        .orderBy("createdAt", "desc")
+        .limit(5)
+        .get();
+
+      const invList = document.getElementById("investmentsList");
+      invList.innerHTML = "";
+      if (invSnap.empty) {
+        invList.innerHTML = "<p>No investments yet.</p>";
+      } else {
+        invSnap.forEach(doc => {
           const data = doc.data();
-          document.getElementById("fullName").textContent = data.fullName || "Not set";
-          document.getElementById("phone").textContent = data.phone || "Not set";
-          document.getElementById("loadingMsg").style.display = "none";
-        } else {
-          document.getElementById("loadingMsg").textContent = "No profile found.";
-        }
-      } catch (err) {
-        console.error(err);
-        document.getElementById("loadingMsg").textContent = "❌ Error loading profile.";
+          const date = data.createdAt?.toDate().toLocaleString() || 'N/A';
+          const div = document.createElement("div");
+          div.className = "investment-card";
+          div.innerHTML = `
+            <p><strong>Plan:</strong> KES ${data.planAmount}</p>
+            <p><strong>Daily:</strong> KES ${data.dailyEarning}</p>
+            <p><strong>Duration:</strong> ${data.duration} days</p>
+            <p><strong>Date:</strong> ${date}</p>
+          `;
+          invList.appendChild(div);
+        });
       }
     });
-
-    function logout() {
-      auth.signOut().then(() => location.href = "login.html");
-    }
-
-    function goToDashboard() {
-      window.location.href = "index.html";
-    }
-
-    function goToEdit() {
-      window.location.href = "edit-profile.html";
-    }
   </script>
 </body>
 </html>
