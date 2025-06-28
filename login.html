@@ -127,33 +127,17 @@
   <script src="auth.js"></script>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
-      authDomain: "trustcode-b3e36.firebaseapp.com",
-      projectId: "trustcode-b3e36",
-      storageBucket: "trustcode-b3e36.firebasestorage.app",
-      messagingSenderId: "978590002424",
-      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
-    };
-
-    // Initialize Firebase once
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
     const loginForm = document.getElementById("loginForm");
     const loginMessage = document.getElementById("loginMessage");
     const signupLink = document.getElementById("signupLink");
 
-    // Pass referral code to signup if available
+    // Pass referral code to signup page
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get("ref");
-    if (refCode) {
-      signupLink.href = `signup.html?ref=${refCode}`;
-    }
+    if (refCode) signupLink.href = `signup.html?ref=${refCode}`;
+
+    // If already logged in, redirect to dashboard
+    redirectIfLoggedIn();
 
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -164,26 +148,13 @@
       loginMessage.textContent = "";
       loginMessage.className = "";
 
-      try {
-        const userCredential = await auth.signInWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-
-        const doc = await db.collection("users").doc(user.uid).get();
-        if (!doc.exists) throw new Error("User profile not found.");
-
-        const userData = doc.data();
-        userData.uid = user.uid; // Include UID for local storage
-        storeUserLocally(userData); // ✅ Your auth.js helper
-
+      const result = await loginUser(email, password);
+      if (result.success) {
         loginMessage.textContent = "✅ Login successful! Redirecting...";
         loginMessage.className = "alert success";
-
-        setTimeout(() => {
-          window.location.href = "index.html";
-        }, 1500);
-      } catch (err) {
-        console.error("Login error:", err.message);
-        loginMessage.textContent = err.message || "❌ Login failed. Try again.";
+        setTimeout(() => window.location.href = "index.html", 1500);
+      } else {
+        loginMessage.textContent = "❌ " + (result.message || "Login failed");
         loginMessage.className = "alert error";
       }
     });

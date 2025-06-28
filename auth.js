@@ -1,6 +1,6 @@
-// auth.js - Trustcode Full Auth System
+// auth.js – Trustcode Full Auth System
 
-// Firebase Config
+// 1. Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
   authDomain: "trustcode-b3e36.firebaseapp.com",
@@ -10,7 +10,7 @@ const firebaseConfig = {
   appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
 };
 
-// Initialize Firebase
+// 2. Initialize Firebase (only once)
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -18,30 +18,23 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-const LOCAL_STORAGE_KEY = "user";
+const LOCAL_STORAGE_KEY = "tc_user";
 
-/**
- * Save user to localStorage
- */
+// 3. Store user locally
 function storeUserLocally(userData) {
   if (!userData?.uid) return;
   userData.lastUpdated = Date.now();
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userData));
 }
 
-/**
- * Get user from localStorage or Firebase
- */
+// 4. Get user from localStorage or Firebase session
 function getCurrentUser() {
-  const firebaseUser = auth.currentUser;
+  const fbUser = auth.currentUser;
   const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
 
-  if (firebaseUser?.uid) {
-    if (!stored || stored.uid !== firebaseUser.uid) {
-      return {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email
-      };
+  if (fbUser?.uid) {
+    if (!stored || stored.uid !== fbUser.uid) {
+      return { uid: fbUser.uid, email: fbUser.email };
     }
     return stored;
   }
@@ -49,16 +42,12 @@ function getCurrentUser() {
   return stored?.uid ? stored : null;
 }
 
-/**
- * Check if stored user data is stale (older than 1 hour)
- */
+// 5. Check if data is older than 1 hour
 function isDataStale(user) {
-  return !user?.lastUpdated || (Date.now() - user.lastUpdated > 60 * 60 * 1000);
+  return !user?.lastUpdated || Date.now() - user.lastUpdated > 60 * 60 * 1000;
 }
 
-/**
- * Load fresh user data from Firestore
- */
+// 6. Load fresh user data from Firestore
 async function loadUserData(uid) {
   try {
     const doc = await db.collection("users").doc(uid).get();
@@ -73,9 +62,7 @@ async function loadUserData(uid) {
   }
 }
 
-/**
- * Sign up a new user
- */
+// 7. Sign up a new user
 async function signUpUser(email, password, fullName, phone) {
   try {
     const userCred = await auth.createUserWithEmailAndPassword(email, password);
@@ -100,9 +87,7 @@ async function signUpUser(email, password, fullName, phone) {
   }
 }
 
-/**
- * Login user
- */
+// 8. Login a user
 async function loginUser(email, password) {
   try {
     const userCred = await auth.signInWithEmailAndPassword(email, password);
@@ -116,9 +101,7 @@ async function loginUser(email, password) {
   }
 }
 
-/**
- * Logout user
- */
+// 9. Logout the user
 function logoutUser(message = null) {
   auth.signOut().finally(() => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -127,9 +110,7 @@ function logoutUser(message = null) {
   });
 }
 
-/**
- * Protect a page (optional: enforce role)
- */
+// 10. Protect a page
 async function protectPage(requiredRole = null) {
   let user = getCurrentUser();
 
@@ -154,9 +135,7 @@ async function protectPage(requiredRole = null) {
   }
 }
 
-/**
- * Redirect if user is already logged in
- */
+// 11. Redirect to dashboard if already logged in
 function redirectIfLoggedIn() {
   const user = getCurrentUser();
   if (user && !isDataStale(user)) {
@@ -164,9 +143,7 @@ function redirectIfLoggedIn() {
   }
 }
 
-/**
- * Automatically sync Firestore user on login
- */
+// 12. Keep user in sync after login
 auth.onAuthStateChanged(async (firebaseUser) => {
   if (firebaseUser?.uid) {
     const data = await loadUserData(firebaseUser.uid);
@@ -174,7 +151,7 @@ auth.onAuthStateChanged(async (firebaseUser) => {
   }
 });
 
-// Export to global scope
+// 13. Expose to global window
 window.getCurrentUser = getCurrentUser;
 window.storeUserLocally = storeUserLocally;
 window.loadUserData = loadUserData;

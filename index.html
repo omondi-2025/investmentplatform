@@ -249,15 +249,12 @@
       messagingSenderId: "978590002424",
       appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
     };
-
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
-
-    const db = firebase.firestore();
   </script>
 
-  <!-- Authentication Logic -->
+  <!-- Auth Logic -->
   <script src="auth.js"></script>
   <script>
     function logout() {

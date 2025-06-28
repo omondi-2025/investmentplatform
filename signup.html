@@ -15,6 +15,7 @@
       align-items: center;
       height: 100vh;
     }
+
     .signup-box {
       background: #fff;
       padding: 30px;
@@ -23,16 +24,19 @@
       width: 100%;
       max-width: 400px;
     }
+
     h2 {
       text-align: center;
       color: #004aad;
       margin-bottom: 20px;
     }
+
     label {
       display: block;
       margin-top: 10px;
       color: #333;
     }
+
     input {
       width: 100%;
       padding: 10px;
@@ -41,6 +45,7 @@
       border: 1px solid #ccc;
       font-size: 16px;
     }
+
     button {
       width: 100%;
       padding: 10px;
@@ -54,27 +59,33 @@
       cursor: pointer;
       transition: background 0.3s;
     }
+
     button:hover {
       background: #004aad;
     }
+
     .alert {
       margin-top: 15px;
       padding: 10px;
       border-radius: 5px;
       font-size: 14px;
     }
+
     .success {
       background: #d4edda;
       color: #155724;
     }
+
     .error {
       background: #f8d7da;
       color: #721c24;
     }
+
     .switch {
       margin-top: 15px;
       text-align: center;
     }
+
     .switch a {
       color: #004aad;
       text-decoration: underline;
@@ -83,16 +94,16 @@
 </head>
 <body>
   <div class="signup-box">
-    <h2>Create Account</h2>
+    <h2>Create Your Account</h2>
     <form id="signupForm">
       <label for="fullName">Full Name</label>
       <input type="text" id="fullName" required placeholder="Your full name" />
 
       <label for="phone">Phone Number</label>
-      <input type="tel" id="phone" required placeholder="e.g. 0712345678 or 0112345678" />
+      <input type="tel" id="phone" required placeholder="e.g. 0712345678" />
 
       <label for="email">Email</label>
-      <input type="email" id="email" required placeholder="e.g. name@example.com" />
+      <input type="email" id="email" required placeholder="you@example.com" />
 
       <label for="password">Password</label>
       <input type="password" id="password" required minlength="6" placeholder="Minimum 6 characters" />
@@ -102,7 +113,7 @@
     </form>
 
     <div class="switch">
-      Already have an account? <a id="loginLink" href="login.html">Login instead</a>
+      Already have an account? <a id="loginLink" href="login.html">Login here</a>
     </div>
   </div>
 
@@ -111,40 +122,18 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <!-- Auth logic -->
+  <!-- Shared Authentication Logic -->
   <script src="auth.js"></script>
 
   <script>
-    // Trustcode Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
-      authDomain: "trustcode-b3e36.firebaseapp.com",
-      projectId: "trustcode-b3e36",
-      storageBucket: "trustcode-b3e36.firebasestorage.app",
-      messagingSenderId: "978590002424",
-      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
-    };
-
-    // Only initialize Firebase once
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
     const signupForm = document.getElementById("signupForm");
     const signupMessage = document.getElementById("signupMessage");
     const loginLink = document.getElementById("loginLink");
 
-    // Handle referral if provided
+    // Preserve referral code in login link
     const urlParams = new URLSearchParams(window.location.search);
-    const referredBy = urlParams.get("ref") || null;
-    if (referredBy) loginLink.href = `login.html?ref=${referredBy}`;
-
-    function generateRefCode() {
-      return Math.floor(10000 + Math.random() * 90000).toString();
-    }
+    const refCode = urlParams.get("ref");
+    if (refCode) loginLink.href = `login.html?ref=${refCode}`;
 
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -153,44 +142,26 @@
       const phone = document.getElementById("phone").value.trim();
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
-      const refCode = generateRefCode();
 
       signupMessage.textContent = "";
+      signupMessage.className = "";
 
-      if (!/^0(1|7)[0-9]{8}$/.test(phone)) {
-        signupMessage.textContent = "❌ Please enter a valid Kenyan phone number.";
+      // Simple Kenyan phone format check
+      if (!/^0(1|7)\d{8}$/.test(phone)) {
+        signupMessage.textContent = "❌ Invalid Kenyan phone number.";
         signupMessage.className = "alert error";
         return;
       }
 
-      try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-
-        const userData = {
-          uid: user.uid,
-          fullName,
-          phone,
-          email,
-          refCode,
-          referredBy,
-          role: "user",
-          wallet: 0,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        await db.collection("users").doc(user.uid).set(userData);
-        storeUserLocally(userData);
-
-        signupMessage.textContent = "✅ Account created successfully! Redirecting...";
+      const response = await signUpUser(email, password, fullName, phone);
+      if (response.success) {
+        signupMessage.textContent = "✅ Signup successful! Redirecting...";
         signupMessage.className = "alert success";
-
         setTimeout(() => {
           window.location.href = "index.html";
         }, 1500);
-      } catch (err) {
-        console.error("Signup failed:", err);
-        signupMessage.textContent = err.message || "❌ Something went wrong. Please try again.";
+      } else {
+        signupMessage.textContent = "❌ " + (response.message || "Signup failed");
         signupMessage.className = "alert error";
       }
     });
