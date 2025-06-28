@@ -205,8 +205,8 @@
   </div>
 
   <div class="wallet-info">
-    <div><strong id="userName">Name</strong></div>
-    <div><span id="userEmail">email@example.com</span></div>
+    <div><strong id="userName">Loading...</strong></div>
+    <div><span id="userEmail">Loading...</span></div>
 
     <div class="wallet-stats">
       <div class="wallet-box">Balance <strong>KES <span id="wallet">0</span></strong></div>
@@ -245,7 +245,7 @@
       apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
       authDomain: "trustcode-b3e36.firebaseapp.com",
       projectId: "trustcode-b3e36",
-      storageBucket: "trustcode-b3e36.firebasestorage.app",
+      storageBucket: "trustcode-b3e36.appspot.com",
       messagingSenderId: "978590002424",
       appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
     };
@@ -254,8 +254,10 @@
     }
   </script>
 
-  <!-- Auth Logic -->
+  <!-- Shared Auth Logic -->
   <script src="auth.js"></script>
+
+  <!-- Page Logic -->
   <script>
     function logout() {
       logoutUser();
