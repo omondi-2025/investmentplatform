@@ -142,7 +142,7 @@ loginForm.addEventListener("submit", async (e) => {
   loginMessage.className = "";
 
   try {
-    const res = await fetch("/api/login", {
+    const res = await fetch("https://investmentplatform.onrender.com/api/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

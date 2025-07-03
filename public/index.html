@@ -247,14 +247,16 @@
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    const BASE_URL = "https://investmentplatform.onrender.com";
     const currentUser = JSON.parse(localStorage.getItem("tc_user"));
+
     if (!currentUser || !currentUser._id) {
       window.location.href = "login.html";
       return;
     }
 
     try {
-      const res = await fetch(`http://localhost:3000/api/user/${currentUser._id}`);
+      const res = await fetch(`${BASE_URL}/api/user/${currentUser._id}`);
       const user = await res.json();
 
       document.getElementById("userName").textContent = user.fullName || "User";

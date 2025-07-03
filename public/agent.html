@@ -167,7 +167,7 @@
     document.getElementById("referralLink2").value = referralUrl;
 
     try {
-      const res = await fetch(`http://localhost:3000/api/agent/dashboard/${userData.referralCode}`);
+      const res = await fetch(`https://investmentplatform.onrender.com/api/agent/dashboard/${userData.referralCode}`);
       const data = await res.json();
 
       document.getElementById("totalReferrals").textContent = data.totalReferrals;

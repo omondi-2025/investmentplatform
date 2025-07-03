@@ -1,6 +1,6 @@
 // auth.js – Trustcode Auth System (MongoDB Version)
-
 const LOCAL_STORAGE_KEY = "tc_user";
+const BASE_URL = "https://investmentplatform.onrender.com"; // ✅ Render backend
 
 // 1. Store user locally
 function storeUserLocally(userData) {
@@ -27,7 +27,7 @@ function isDataStale(user) {
 // 4. Load fresh user data from MongoDB
 async function loadUserData(userId) {
   try {
-    const res = await fetch(`http://localhost:3000/api/user/${userId}`);
+    const res = await fetch(`${BASE_URL}/api/user/${userId}`);
     const user = await res.json();
     if (user?._id) {
       storeUserLocally(user);
@@ -43,7 +43,7 @@ async function loadUserData(userId) {
 // 5. Sign up a new user
 async function signUpUser(email, password, fullName, phone) {
   try {
-    const res = await fetch("http://localhost:3000/api/signup", {
+    const res = await fetch(`${BASE_URL}/api/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -66,7 +66,7 @@ async function signUpUser(email, password, fullName, phone) {
 // 6. Login user
 async function loginUser(email, password) {
   try {
-    const res = await fetch("http://localhost:3000/api/login", {
+    const res = await fetch(`${BASE_URL}/api/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

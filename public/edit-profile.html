@@ -79,6 +79,8 @@
 
   <script src="auth.js"></script>
   <script>
+  const BASE_URL = "https://investmentplatform.onrender.com";
+
   document.addEventListener("DOMContentLoaded", async () => {
     await protectPage();
     const user = getCurrentUser();
@@ -88,11 +90,16 @@
       return;
     }
 
-    const response = await fetch(`http://localhost:3000/api/user/${user._id}`);
-    const data = await response.json();
+    try {
+      const response = await fetch(`${BASE_URL}/api/user/${user._id}`);
+      const data = await response.json();
 
-    document.getElementById("fullName").value = data.fullName || "";
-    document.getElementById("phone").value = data.phone || "";
+      document.getElementById("fullName").value = data.fullName || "";
+      document.getElementById("phone").value = data.phone || "";
+    } catch (err) {
+      console.error("Error loading profile:", err);
+      alert("Failed to load profile info.");
+    }
   });
 
   document.getElementById("editForm").addEventListener("submit", async (e) => {
@@ -106,18 +113,29 @@
       return;
     }
 
-    const res = await fetch(`http://localhost:3000/api/user/${user._id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, phone })
-    });
+    try {
+      const res = await fetch(`${BASE_URL}/api/user/${user._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName, phone })
+      });
 
-    const msgBox = document.getElementById("messageBox");
-    if (res.ok) {
-      msgBox.textContent = "✅ Profile updated successfully!";
-      msgBox.className = "alert success";
-    } else {
-      msgBox.textContent = "❌ Failed to update profile.";
+      const msgBox = document.getElementById("messageBox");
+      if (res.ok) {
+        msgBox.textContent = "✅ Profile updated successfully!";
+        msgBox.className = "alert success";
+
+        // update local user cache
+        const updatedUser = await res.json();
+        storeUserLocally(updatedUser);
+      } else {
+        msgBox.textContent = "❌ Failed to update profile.";
+        msgBox.className = "alert error";
+      }
+    } catch (err) {
+      console.error("Update failed:", err);
+      const msgBox = document.getElementById("messageBox");
+      msgBox.textContent = "❌ Server error.";
       msgBox.className = "alert error";
     }
   });

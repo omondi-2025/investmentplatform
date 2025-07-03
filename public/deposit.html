@@ -126,7 +126,8 @@
     </form>
   </div>
   <script>
-  const mpesaNumbers = ["0102188852"];
+ const BASE_URL = "https://investmentplatform.onrender.com";
+const mpesaNumbers = ["0102188852"];
   const currentNumber = mpesaNumbers[Math.floor(Date.now() / (15 * 60 * 1000)) % mpesaNumbers.length];
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -188,7 +189,7 @@
     const transactionCode = transactionCodeMatch[0];
 
     try {
-      const res = await fetch("http://localhost:3000/api/recharge", {
+      const res = await fetch(`${BASE_URL}/api/recharge`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

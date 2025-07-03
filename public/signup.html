@@ -153,18 +153,18 @@
       }
 
       try {
-        const res = await fetch("/api/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-  fullName,
-  phone,
-  email,
-  password,
-  referredBy: refCode  // ✅ correct field name expected by backend
-})
+       const res = await fetch("https://investmentplatform.onrender.com/api/signup", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    fullName,
+    phone,
+    email,
+    password,
+    referredBy: refCode
+  })
         });
 
         const data = await res.json();
