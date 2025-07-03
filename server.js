@@ -15,7 +15,17 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI);
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 10000,
+  ssl: true
+})
+.then(() => console.log("✅ MongoDB connected successfully"))
+.catch(err => {
+  console.error("❌ MongoDB connection error:", err);
+  process.exit(1);
+});
 
 // Models
 const User = require('./models/User');
