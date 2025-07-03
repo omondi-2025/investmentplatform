@@ -7,7 +7,7 @@ const path = require('path');
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // Middleware
 app.use(cors());
@@ -350,6 +350,6 @@ setInterval(async () => {
 }, 60 * 1000); // check every minute
 
 // Server Start
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
