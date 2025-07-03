@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Edit Profile - Trustcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #004aad;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background-color: #004aad;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .alert {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Edit Profile</h2>
+    <form id="editForm">
+      <label for="fullName">Full Name</label>
+      <input type="text" id="fullName" required />
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" required />
+
+      <button type="submit">Save Changes</button>
+      <div id="messageBox"></div>
+    </form>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    await protectPage();
+    const user = getCurrentUser();
+
+    if (!user || !user._id) {
+      alert("User not properly logged in.");
+      return;
+    }
+
+    const response = await fetch(`http://localhost:3000/api/user/${user._id}`);
+    const data = await response.json();
+
+    document.getElementById("fullName").value = data.fullName || "";
+    document.getElementById("phone").value = data.phone || "";
+  });
+
+  document.getElementById("editForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById("fullName").value;
+    const phone = document.getElementById("phone").value;
+    const user = getCurrentUser();
+
+    if (!user || !user._id) {
+      alert("User not properly logged in.");
+      return;
+    }
+
+    const res = await fetch(`http://localhost:3000/api/user/${user._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fullName, phone })
+    });
+
+    const msgBox = document.getElementById("messageBox");
+    if (res.ok) {
+      msgBox.textContent = "✅ Profile updated successfully!";
+      msgBox.className = "alert success";
+    } else {
+      msgBox.textContent = "❌ Failed to update profile.";
+      msgBox.className = "alert error";
+    }
+  });
+</script>
+</body>
+</html>

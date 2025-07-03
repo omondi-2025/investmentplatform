@@ -220,7 +220,7 @@
     <h3>Quick Access</h3>
     <div class="grid-buttons">
       <a href="deposit.html">💳<br>Deposit</a>
-      <a href="invest.html">📈<br>Invest</a>
+      <a href="package.html">📈<br>Invest</a>
       <a href="withdrawal.html">💸<br>Cashout</a>
       <a href="agent.html">👥<br>Team</a>
       <a href="profile.html">👤<br>Profile</a>
@@ -229,58 +229,46 @@
 
   <nav class="bottom-nav">
     <a href="index.html"><span>🏠</span>Home</a>
-    <a href="invest.html"><span>📦</span>Packages</a>
+    <a href="package.html"><span>📦</span>Packages</a>
     <a href="agent.html"><span>👥</span>Invite</a>
     <a href="profile.html"><span>👤</span>Profile</a>
   </nav>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-  <!-- Firebase Config -->
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBV9_0Iw5GbKTSIdvaMEwSNpKA0sYcH2sg",
-      authDomain: "trustcode-b3e36.firebaseapp.com",
-      projectId: "trustcode-b3e36",
-      storageBucket: "trustcode-b3e36.appspot.com",
-      messagingSenderId: "978590002424",
-      appId: "1:978590002424:web:8f0e1597a7dbbb0b1a9f0d"
-    };
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-  </script>
-
-  <!-- Shared Auth Logic -->
-  <script src="auth.js"></script>
-
   <!-- Page Logic -->
   <script>
-    function logout() {
-      logoutUser();
+  function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+  }
+
+  function toggleSupport() {
+    const box = document.getElementById("supportBox");
+    box.style.display = box.style.display === "block" ? "none" : "block";
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const currentUser = JSON.parse(localStorage.getItem("tc_user"));
+    if (!currentUser || !currentUser._id) {
+      window.location.href = "login.html";
+      return;
     }
 
-    function toggleSupport() {
-      const box = document.getElementById("supportBox");
-      box.style.display = box.style.display === "block" ? "none" : "block";
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      await protectPage();
-
-      const user = getCurrentUser();
-      if (!user) return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/user/${currentUser._id}`);
+      const user = await res.json();
 
       document.getElementById("userName").textContent = user.fullName || "User";
-      document.getElementById("userEmail").textContent = user.email || "email@example.com";
+      document.getElementById("userEmail").textContent = user.email || "";
       document.getElementById("wallet").textContent = user.wallet || 0;
-      document.getElementById("cashouts").textContent = user.cashouts || "0.00";
-      document.getElementById("expense").textContent = user.expense || "0.00";
-      document.getElementById("income").textContent = user.dailyIncome || "0.00";
-    });
-  </script>
+      document.getElementById("cashouts").textContent = user.cashouts || 0;
+      document.getElementById("expense").textContent = user.expense || 0;
+      document.getElementById("income").textContent = user.dailyIncome || 0;
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+      alert("⚠️ Failed to load user data. Please try logging in again.");
+      logout();
+    }
+  });
+</script>
 </body>
 </html>

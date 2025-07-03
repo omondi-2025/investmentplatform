@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Withdraw Funds - Trustcode</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #004aad;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      position: relative;
+    }
+    .back-arrow {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: white;
+      text-decoration: none;
+      font-size: 20px;
+    }
+    .balance-box {
+      background: #e0efff;
+      margin: 20px auto;
+      max-width: 600px;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 15px;
+      display: block;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      background: #004aad;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .alert {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    h3 {
+      margin-top: 30px;
+      color: #004aad;
+    }
+    ul#historyList {
+      list-style: none;
+      padding-left: 0;
+    }
+    ul#historyList li {
+      background: #fff;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="index.html" class="back-arrow">←</a>
+    <h1>Withdraw Funds</h1>
+  </header>
+
+  <div class="balance-box">
+    Wallet Balance: KES <span id="walletBalance">...</span>
+  </div>
+
+  <div class="container">
+    <form id="withdrawForm">
+      <label for="amount">Amount (Ksh)</label>
+      <input type="number" id="amount" min="150" required placeholder="Minimum 150"/>
+
+      <label for="phone">Phone Number</label>
+      <input type="tel" id="phone" required placeholder="e.g. +254712345678" />
+
+      <button type="submit">Request Withdrawal</button>
+      <div id="withdrawMessage"></div>
+    </form>
+
+       <p style="font-size: 14px; color: #555; margin-top: 8px;">
+  ⚠️ A <strong>15%</strong> tax will be deducted from the requested amount.
+</p>
+     <div id="taxPreview" style="margin-top: 10px; font-size: 14px; color: #004aad;"></div>
+	 
+    <h3>Your Withdrawal History</h3>
+    <ul id="historyList"><li>Loading...</li></ul>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    const withdrawForm = document.getElementById("withdrawForm");
+    const withdrawMessage = document.getElementById("withdrawMessage");
+    const historyList = document.getElementById("historyList");
+    const walletBalanceEl = document.getElementById("walletBalance");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await protectPage();
+      const user = getCurrentUser();
+      if (!user || !user._id) return (location.href = "login.html");
+
+      let userData;
+
+      async function fetchUserData() {
+        try {
+          const res = await fetch(`http://localhost:3000/api/user/${user._id}`);
+          userData = await res.json();
+          walletBalanceEl.textContent = (userData.wallet || 0).toFixed(2);
+          document.getElementById("phone").value = userData.phone || "";
+        } catch (err) {
+          console.error("Error fetching user:", err);
+        }
+      }
+
+     async function loadHistory() {
+  historyList.innerHTML = "<li>Loading...</li>";
+  try {
+    const res = await fetch(`http://localhost:3000/api/withdrawals/${user._id}`);
+    const history = await res.json();
+    console.log("Withdrawal history data:", history); // ADD THIS
+
+    if (!Array.isArray(history) || history.length === 0) {
+      historyList.innerHTML = "<li>No withdrawal history yet.</li>";
+      return;
+    }
+
+    historyList.innerHTML = "";
+    history.forEach(item => {
+      const date = new Date(item.createdAt).toLocaleString();
+      historyList.innerHTML += `
+        <li>
+          KES ${item.amount} (Tax: ${item.tax}) → ${item.status.toUpperCase()} on ${date}
+        </li>
+      `;
+    });
+  } catch (err) {
+    console.error("Error loading history:", err); // Already exists
+  }
+}
+   document.getElementById("amount").addEventListener("input", () => {
+  const val = parseFloat(document.getElementById("amount").value);
+  const preview = document.getElementById("taxPreview");
+
+  if (isNaN(val) || val < 150) {
+    preview.textContent = "";
+    return;
+  }
+
+  const tax = (val * 0.15).toFixed(2);
+  const net = (val - tax).toFixed(2);
+  preview.textContent = `After 15% tax (KES ${tax}), you will receive KES ${net}`;
+});
+      await fetchUserData();
+      await loadHistory();
+
+      withdrawForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        withdrawMessage.textContent = "";
+        withdrawMessage.className = "alert";
+
+        const amount = parseFloat(document.getElementById("amount").value);
+        const phone = document.getElementById("phone").value.trim();
+        const hour = new Date().getHours();
+        
+        if (hour < 9 || hour >= 18) {
+          withdrawMessage.textContent = "❌ Withdrawals allowed only between 9AM and 6PM.";
+          withdrawMessage.classList.add("error");
+          return;
+        }
+
+        if (isNaN(amount) || amount < 150) {
+          withdrawMessage.textContent = "❌ Minimum withdrawal amount is Ksh 150.";
+          withdrawMessage.classList.add("error");
+          return;
+        }
+
+        if (userData.wallet < amount) {
+          withdrawMessage.textContent = "❌ Insufficient wallet balance.";
+          withdrawMessage.classList.add("error");
+          return;
+        }
+
+        try {
+          const res = await fetch("http://localhost:3000/api/withdraw", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uid: user._id,
+              amount,
+              phone
+            })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            withdrawMessage.textContent = `✅ Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
+            withdrawMessage.classList.add("success");
+            await fetchUserData();
+            await loadHistory();
+            withdrawForm.reset();
+			document.getElementById("taxPreview").textContent = "";
+          } else {
+            withdrawMessage.textContent = "❌ " + (data.message || "Withdrawal failed.");
+            withdrawMessage.classList.add("error");
+          }
+        } catch (err) {
+          console.error("Withdrawal error:", err);
+          withdrawMessage.textContent = "❌ Server error occurred.";
+          withdrawMessage.classList.add("error");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

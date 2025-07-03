@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Packages - Trustcode</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f4f8fb;
+      padding: 1rem;
+    }
+
+    header {
+      background-color: #004aad;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .wallet {
+      background: #ffffff;
+      padding: 1rem;
+      border-radius: 8px;
+      max-width: 300px;
+      margin: 1rem auto;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .wallet strong {
+      color: #004aad;
+      font-size: 1.4rem;
+    }
+
+    .packages {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-top: 2rem;
+    }
+
+    .package-card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+      text-align: center;
+      transition: transform 0.2s ease;
+    }
+
+    .package-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .package-card h3 {
+      margin: 0;
+      color: #004aad;
+      font-size: 1.4rem;
+    }
+
+    .package-card p {
+      margin: 8px 0;
+      color: #333;
+    }
+
+    .package-card button {
+      background-color: #004aad;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s ease;
+    }
+
+    .package-card button:hover {
+      background-color: #00317a;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>📦 Investment Packages</h2>
+  </header>
+
+  <div class="wallet">
+    Wallet Balance: <strong id="walletBalance">KES 0</strong>
+  </div>
+
+  <div class="packages" id="packageContainer"></div>
+
+  <script>
+    // Simulate logged-in user (replace with your real localStorage logic)
+    const user = JSON.parse(localStorage.getItem("tc_user")); // ✅ match login page
+
+    if (!user) {
+      alert("You must be logged in to view this page.");
+      window.location.href = "login.html";
+    }
+
+    let wallet = user.wallet || 0;
+    const walletDisplay = document.getElementById("walletBalance");
+    walletDisplay.textContent = `KES ${wallet}`;
+
+    const investmentPackages = [
+      { amount: 300, daily: 80, duration: 7 },
+      { amount: 500, daily: 130, duration: 45 },
+      { amount: 900, daily: 240, duration: 45 },
+      { amount: 1700, daily: 453, duration: 45 },
+      { amount: 5000, daily: 1330, duration: 45 },
+      { amount: 10000, daily: 2660, duration: 45 },
+      { amount: 20000, daily: 5320, duration: 45 }
+    ];
+
+    const container = document.getElementById("packageContainer");
+
+    investmentPackages.forEach(plan => {
+      const card = document.createElement("div");
+      card.className = "package-card";
+      card.innerHTML = `
+        <h3>KES ${plan.amount}</h3>
+        <p>💰 Daily Earning: KES ${plan.daily}</p>
+        <p>📆 Duration: ${plan.duration} days</p>
+        <button onclick="invest(${plan.amount}, ${plan.daily}, ${plan.duration})">Invest</button>
+      `;
+      container.appendChild(card);
+    });
+
+   async function invest(amount, daily, duration) {
+  if (wallet < amount) {
+    alert("❌ Insufficient wallet balance.");
+    return;
+  }
+
+  const confirmInvest = confirm(`Invest KES ${amount} for ${duration} days?\nDaily return: KES ${daily}`);
+  if (!confirmInvest) return;
+
+  const investment = {
+    userId: user._id,
+    planName: `KES ${amount}`,
+    planAmount: Number(amount),
+    durationDays: Number(duration),
+    returnAmount: Number(daily) * Number(duration)
+  };
+
+  try {
+    const res = await fetch("http://localhost:3000/api/invest", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(investment)
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      user.wallet = result.newWallet;
+      localStorage.setItem("tc_user", JSON.stringify(user));
+      walletDisplay.textContent = `KES ${user.wallet}`;
+      alert("✅ Investment successful!");
+    } else {
+      alert("❌ " + (result.message || "Investment failed."));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("❌ Network error. Try again.");
+  }
+}
+  </script>
+</body>
+</html>

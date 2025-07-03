@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Profile - Trustcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #e6f0ff;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      color: #004aad;
+      text-align: center;
+    }
+    .profile-img {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .profile-img img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .info p {
+      font-size: 16px;
+      margin: 8px 0;
+    }
+    .wallet {
+      color: green;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .investments {
+      margin-top: 20px;
+    }
+    .investment-card {
+      background: #f1f7ff;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      width: 100%;
+      background: #004aad;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #ccc;
+      color: #222;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>My Profile</h2>
+    <div class="profile-img">
+      <img src="default-avatar.png" id="profileImage" alt="Profile Picture" />
+    </div>
+    <div class="info">
+      <p><strong>Full Name:</strong> <span id="fullName">Loading...</span></p>
+      <p><strong>Phone Number:</strong> <span id="phone">Loading...</span></p>
+      <p><strong>Email:</strong> <span id="email">Loading...</span></p>
+      <p><strong>Referral Code:</strong> <span id="refCode">Loading...</span></p>
+	  <p><strong>Referred By:</strong> <span id="referredBy">Loading...</span></p>
+      <p class="wallet">Wallet: KES <span id="wallet">...</span></p>
+    </div>
+
+    <div class="investments">
+      <h3>Recent Investments</h3>
+      <div id="investmentsList">Loading investments...</div>
+    </div>
+
+    <button onclick="window.location.href='edit-profile.html'">✏️ Edit Profile</button>
+    <button class="secondary" onclick="window.location.href='change-password.html'">🔐 Change Password</button>
+    <button class="secondary" onclick="window.location.href='index.html'">← Back to Dashboard</button>
+  </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const storedUser = JSON.parse(localStorage.getItem("tc_user"));
+    if (!storedUser || !storedUser._id) {
+      alert("⚠️ Invalid user session. Please log in again.");
+      window.location.href = "login.html";
+      return;
+    }
+
+    const uid = storedUser._id;
+
+    // ✅ Load user profile
+    try {
+      const res = await fetch(`http://localhost:3000/api/user/${uid}`);
+      const user = await res.json();
+
+      document.getElementById("fullName").textContent = user.fullName || 'Not set';
+      document.getElementById("phone").textContent = user.phone || 'Not set';
+      document.getElementById("email").textContent = user.email || 'Not set';
+      document.getElementById("refCode").textContent = user.referralCode || 'None';
+	  document.getElementById("referredBy").textContent = user.referredBy || 'None';
+      document.getElementById("wallet").textContent = (user.wallet || 0).toFixed(2);
+    } catch (err) {
+      alert("⚠️ Failed to load profile info.");
+      console.error(err);
+    }
+
+    // ✅ Load recent investments
+  try {
+  const res = await fetch(`http://localhost:3000/api/investments/${uid}`);
+const data = await res.json();
+const container = document.getElementById("investmentsList");
+container.innerHTML = "";
+
+const investments = data.investments || [];
+
+if (investments.length === 0) {
+  container.innerHTML = "<p>No investments yet.</p>";
+} else {
+  investments.slice(0, 5).forEach(inv => {
+    const date = new Date(inv.createdAt).toLocaleString();
+    const div = document.createElement("div");
+    div.className = "investment-card";
+    div.innerHTML = `
+      <p><strong>Plan:</strong> KES ${inv.planAmount}</p>
+      <p><strong>Daily:</strong> KES ${(inv.returnAmount / inv.durationDays).toFixed(2)}</p>
+      <p><strong>Duration:</strong> ${inv.durationDays} days</p>
+      <p><strong>Status:</strong> ${inv.status}</p>
+      <p><strong>Date:</strong> ${date}</p>
+    `;
+    container.appendChild(div);
+  });
+}
+} catch (err) {
+  console.error("Error loading investments:", err);
+ }
+});
+  </script>
+</body>
+</html>

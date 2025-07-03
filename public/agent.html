@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agent Dashboard - Trustcode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef3f9;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #004aad;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+    h2 {
+      color: #004aad;
+    }
+    .stats-box {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .card {
+      background: #f7faff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 20px;
+      color: #004aad;
+    }
+    .card p {
+      margin: 10px 0 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+    .referral-box {
+      background: #e8f0ff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+    .referral-box input {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .copy-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: #0056b3;
+    }
+    .note {
+      font-size: 14px;
+      margin-top: 15px;
+      color: #333;
+    }
+    button {
+      background: #004aad;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      margin-top: 20px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #003080;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agent Dashboard</h1>
+  </header>
+
+  <div class="container">
+    <h2>Welcome, <span id="agentName">Agent</span></h2>
+
+    <div class="stats-box">
+      <div class="card">
+        <h3>Total Referrals</h3>
+        <p id="totalReferrals">0</p>
+      </div>
+      <div class="card">
+        <h3>Total Earnings</h3>
+        <p>KES <span id="totalEarnings">0.00</span></p>
+      </div>
+      <div class="card">
+        <h3>Withdrawn</h3>
+        <p>KES <span id="totalWithdrawn">0.00</span></p>
+      </div>
+      <div class="card">
+        <h3>Balance</h3>
+        <p>KES <span id="agentBalance">0.00</span></p>
+      </div>
+    </div>
+
+    <div class="referral-box">
+      <h3>Your Referral Link</h3>
+      <input type="text" id="referralLink" readonly />
+      <button class="copy-btn" onclick="copyReferral()">📋 Copy Referral Link</button>
+
+      <div class="note">
+        <p>💰 <strong>Referral Earnings:</strong></p>
+        <ul>
+          <li>🔹 Level 1 (Direct Referrals): Earn <strong>20%</strong> of what they invest.</li>
+          <li>🔹 Level 2 (Their Referrals): Earn <strong>1%</strong> of what their referrals invest.</li>
+        </ul>
+        <p>👉 Share your link and start earning!</p>
+      </div>
+    </div>
+
+    <button onclick="window.location.href='referral.html'">📢 View Referrals</button>
+<button onclick="window.location.href='withdrawal.html'" style="margin-left: 10px;">💸 Withdraw Earnings</button>
+
+<div style="margin-top: 30px; padding: 15px; background: #f0f8ff; border-radius: 8px;">
+  <h3 style="color: #004aad;">Your Referral Link</h3>
+  <p>Share this link to invite others and earn:</p>
+  <ul>
+    <li>👥 <strong>Level 1:</strong> Earn 20% when your direct referral invests</li>
+    <li>👤 <strong>Level 2:</strong> Earn 1% when their referral invests</li>
+  </ul>
+ <input type="text" id="referralLink2" readonly style="width: 100%; padding: 10px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc;" />
+<button onclick="copyReferralLink()">📋 Copy Link</button>
+</div>
+
+  <script>
+  async function loadAgentData() {
+    const userData = JSON.parse(localStorage.getItem("tc_user"));
+    if (!userData || !userData._id || !userData.referralCode) {
+      return location.href = "login.html";
+    }
+
+    document.getElementById("agentName").textContent = userData.fullName;
+
+    const referralUrl = `https://yourtrustcodesite.com/signup.html?ref=${userData.referralCode}`;
+    document.getElementById("referralLink").value = referralUrl;
+    document.getElementById("referralLink2").value = referralUrl;
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/agent/dashboard/${userData.referralCode}`);
+      const data = await res.json();
+
+      document.getElementById("totalReferrals").textContent = data.totalReferrals;
+      document.getElementById("totalEarnings").textContent = data.totalEarnings.toFixed(2);
+      document.getElementById("totalWithdrawn").textContent = data.totalWithdrawn.toFixed(2);
+      document.getElementById("agentBalance").textContent = (data.totalEarnings - data.totalWithdrawn).toFixed(2);
+    } catch (err) {
+      console.error("Failed to load agent data:", err);
+    }
+  }
+
+  function copyReferral() {
+    const input = document.getElementById("referralLink");
+    input.select();
+    input.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    alert("✅ Referral link copied!");
+  }
+
+  function copyReferralLink() {
+    const input = document.getElementById("referralLink2");
+    input.select();
+    input.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    alert("✅ Referral link copied!");
+  }
+
+  document.addEventListener("DOMContentLoaded", loadAgentData);
+  </script>
+</body>
+</html>

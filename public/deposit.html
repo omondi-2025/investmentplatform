@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Recharge Wallet - Trustcode</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f8f9fa;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+
+    .instructions ol {
+      padding-left: 20px;
+      margin-bottom: 20px;
+    }
+
+    .mpesa-number {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eef1f5;
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    textarea {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      resize: none;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+
+    @media (max-width: 500px) {
+  .container {
+    margin: 10px;
+    padding: 15px;
+    width: 90%;
+  }
+
+  textarea, button {
+    font-size: 16px;
+  }
+
+  .mpesa-number {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mpesa-number button {
+    margin-top: 10px;
+    width: 100%;
+  }
+}
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Recharge Wallet</h1>
+    <a href="index.html">← Go to Dashboard</a>
+
+    <div class="instructions">
+      <strong>To recharge your wallet:</strong>
+      <ol>
+        <li>Dial <strong>*334#</strong> on your phone.</li>
+        <li>Select <strong>Send Money</strong>.</li>
+        <li>Send to the number below.</li>
+        <li>Minimum amount is <strong>KES 200</strong>.</li>
+        <li>Paste the full M-PESA confirmation message below.</li>
+      </ol>
+    </div>
+
+    <p><strong>Send Money to this number:</strong></p>
+    <div class="mpesa-number">
+      <span id="mpesaNumber">Loading...</span>
+      <button onclick="copyNumber()">Copy</button>
+    </div>
+
+    <form id="rechargeForm">
+      <textarea id="mpesaMessage" rows="4" required placeholder="Paste M-PESA confirmation message here..."></textarea>
+      <button type="submit">Submit</button>
+      <div id="rechargeMessage"></div>
+    </form>
+  </div>
+  <script>
+  const mpesaNumbers = ["0102188852"];
+  const currentNumber = mpesaNumbers[Math.floor(Date.now() / (15 * 60 * 1000)) % mpesaNumbers.length];
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("mpesaNumber").textContent = currentNumber;
+  });
+
+  function copyNumber() {
+    const number = document.getElementById("mpesaNumber").textContent;
+    navigator.clipboard.writeText(number).then(() => {
+      alert("✅ M-Pesa number copied!");
+    });
+  }
+
+  function getLoggedInUser() {
+    const user = JSON.parse(localStorage.getItem("tc_user"));
+    if (!user || !user._id) {
+      alert("You must be logged in to access this page.");
+      window.location.href = "login.html";
+      return null;
+    }
+    return user;
+  }
+
+  const user = getLoggedInUser();
+  const rechargeForm = document.getElementById("rechargeForm");
+  const rechargeMessage = document.getElementById("rechargeMessage");
+  const submitBtn = rechargeForm.querySelector("button");
+
+  rechargeForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = "⏳ Submitting...";
+    rechargeMessage.textContent = "";
+    rechargeMessage.className = "";
+
+    const message = document.getElementById("mpesaMessage").value.trim();
+    const confirmationMatch = /confirmed/i.test(message);
+    const amountMatch = message.match(/Ksh\s*([\d,]+(\.\d{1,2})?)/i);
+    const matchedNumber = mpesaNumbers.find(num => message.includes(num));
+    const transactionCodeMatch = message.match(/^[A-Z0-9]{10}/);
+
+    if (!confirmationMatch || !amountMatch || !matchedNumber || !transactionCodeMatch) {
+      rechargeMessage.textContent = "❌ Invalid or incomplete M-Pesa message.";
+      rechargeMessage.classList.add("error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit";
+      return;
+    }
+
+    const amount = parseFloat(amountMatch[1].replace(",", ""));
+    if (amount < 200) {
+      rechargeMessage.textContent = "❌ Minimum deposit is KES 200.";
+      rechargeMessage.classList.add("error");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit";
+      return;
+    }
+
+    const transactionCode = transactionCodeMatch[0];
+
+    try {
+      const res = await fetch("http://localhost:3000/api/recharge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user._id,
+          message,
+          amount,
+          number: matchedNumber,
+          transactionCode
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        user.wallet = data.newWallet;
+        localStorage.setItem("tc_user", JSON.stringify(user));
+        rechargeMessage.textContent = `✅ KES ${amount.toFixed(2)} added to your wallet.`;
+        rechargeMessage.classList.add("success");
+        rechargeForm.reset();
+      } else {
+        rechargeMessage.textContent = `❌ ${data.error}`;
+        rechargeMessage.classList.add("error");
+      }
+    } catch (err) {
+      console.error("Recharge failed:", err);
+      rechargeMessage.textContent = "❌ Server error. Try again.";
+      rechargeMessage.classList.add("error");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit";
+    }
+  });
+</script>
+
+</body>
+</html>

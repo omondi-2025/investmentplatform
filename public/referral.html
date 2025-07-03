@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Referral History - Trustcode</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f6ff;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #004aad;
+    }
+
+    .referral-section {
+      margin: 20px auto;
+      max-width: 700px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .level-title {
+      margin-bottom: 10px;
+      color: #004aad;
+    }
+
+    .referral-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #f9fbff;
+    }
+
+    .referral-card p {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>📢 Referral History</h2>
+
+  <div class="referral-section">
+    <h3 class="level-title">Level 1 Referrals</h3>
+    <div id="level1List">Loading...</div>
+  </div>
+
+  <div class="referral-section">
+    <h3 class="level-title">Level 2 Referrals</h3>
+    <div id="level2List">Loading...</div>
+  </div>
+
+  <script>
+    const currentUser = JSON.parse(localStorage.getItem("tc_user"));
+    if (!currentUser || !currentUser.referralCode) {
+      alert("Login session invalid. Please log in again.");
+      window.location.href = "login.html";
+    }
+
+    async function fetchReferrals() {
+      try {
+        const res = await fetch(`http://localhost:3000/api/agent/referrals/${currentUser.referralCode}`);
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error(data.message || "Failed to fetch referral data.");
+        }
+
+        const { level1, level2 } = data;
+
+        function renderList(containerId, list) {
+          const container = document.getElementById(containerId);
+          container.innerHTML = "";
+
+          if (!list.length) {
+            container.innerHTML = "<p>No referrals yet.</p>";
+            return;
+          }
+
+          list.forEach(user => {
+            const div = document.createElement("div");
+            div.className = "referral-card";
+            div.innerHTML = `
+              <p><strong>Name:</strong> ${user.fullName}</p>
+              <p><strong>Email:</strong> ${user.email}</p>
+              <p><strong>Deposited:</strong> KES ${user.totalDeposited || 0}</p>
+            `;
+            container.appendChild(div);
+          });
+        }
+
+        renderList("level1List", level1);
+        renderList("level2List", level2);
+
+      } catch (err) {
+        console.error(err);
+        alert("⚠️ Error loading referral data.");
+      }
+    }
+
+    fetchReferrals();
+  </script>
+</body>
+</html>

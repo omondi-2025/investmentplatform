@@ -118,46 +118,54 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-  <!-- Shared Auth Logic -->
-  <script src="auth.js"></script>
-
   <script>
     const loginForm = document.getElementById("loginForm");
     const loginMessage = document.getElementById("loginMessage");
     const signupLink = document.getElementById("signupLink");
 
-    // Pass referral code to signup page
+    // Handle referral code
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get("ref");
     if (refCode) signupLink.href = `signup.html?ref=${refCode}`;
 
-    // If already logged in, redirect to dashboard
-    redirectIfLoggedIn();
+    // Auto redirect if already logged in
+if (localStorage.getItem("tc_user")) {
+  window.location.href = "index.html";
+}
 
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+  loginMessage.textContent = "";
+  loginMessage.className = "";
 
-      loginMessage.textContent = "";
-      loginMessage.className = "";
-
-      const result = await loginUser(email, password);
-      if (result.success) {
-        loginMessage.textContent = "✅ Login successful! Redirecting...";
-        loginMessage.className = "alert success";
-        setTimeout(() => window.location.href = "index.html", 1500);
-      } else {
-        loginMessage.textContent = "❌ " + (result.message || "Login failed");
-        loginMessage.className = "alert error";
-      }
+  try {
+    const res = await fetch("http://localhost:3000/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
     });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      localStorage.setItem("tc_user", JSON.stringify(data.user)); // ✅ Use consistent key
+      loginMessage.textContent = "✅ Login successful! Redirecting...";
+      loginMessage.className = "alert success";
+      setTimeout(() => window.location.href = "index.html", 1500);
+    } else {
+      loginMessage.textContent = "❌ " + (data.message || "Login failed.");
+      loginMessage.className = "alert error";
+    }
+  } catch (err) {
+    loginMessage.textContent = "❌ Error connecting to server.";
+    loginMessage.className = "alert error";
+  }
+});
   </script>
 </body>
 </html>
