@@ -166,18 +166,37 @@ app.post('/api/invest', async (req, res) => {
       startDate,
       endDate,
       status: 'active',
-      createdAt: new Date()
+      createdAt: new Date(),
+	  lastPayoutDate: new Date() // 👈 ADD THIS
     });
 
-    await newInvestment.save();
+  await newInvestment.save();
 
+  // 👇 ADD referral logic right after this
+  if (user.referredBy) {
+  const level1 = await User.findOne({ referralCode: user.referredBy });
+  if (level1) {
+    const reward1 = amount * 0.20;
+    level1.wallet += reward1;
+    await level1.save();
+
+    if (level1.referredBy) {
+      const level2 = await User.findOne({ referralCode: level1.referredBy });
+      if (level2) {
+        const reward2 = amount * 0.01;
+        level2.wallet += reward2;
+        await level2.save();
+      }
+    }
+  }
+}
     res.json({ message: "Investment successful", newWallet: user.wallet });
   } catch (err) {
     console.error("Investment error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
-
+  
  // routes/recharge.js or inside /api/recharge handler
 app.post('/api/recharge', async (req, res) => {
   const { uid, message, amount, number, transactionCode } = req.body;
@@ -194,7 +213,7 @@ app.post('/api/recharge', async (req, res) => {
 
     const recharge = await Recharge.create({
       uid,
-      name: user.name,
+      name: user.fullName,
       phone: user.phone,
       message,
       amount,
@@ -297,6 +316,31 @@ setInterval(async () => {
     console.error("Auto-update withdrawal error:", err);
   }
 }, 60 * 1000); // check every minute
+ 
+
+ setInterval(async () => {
+  const now = new Date();
+  const investments = await Investment.find({ status: 'active' });
+
+  for (const inv of investments) {
+    const last = new Date(inv.lastPayoutDate);
+    const nextDue = new Date(last.getTime() + 24 * 60 * 60 * 1000);
+    if (now >= nextDue && inv.durationDays > 0) {
+      const user = await User.findById(inv.uid);
+      const dailyPay = inv.returnAmount / inv.durationDays;
+
+      user.wallet += dailyPay;
+      await user.save();
+
+      inv.durationDays -= 1;
+      inv.lastPayoutDate = now;
+      if (inv.durationDays === 0) inv.status = 'completed';
+
+      await inv.save();
+      console.log(`💰 Paid ${dailyPay.toFixed(2)} to ${user.fullName}`);
+    }
+  }
+}, 10 * 60 * 1000); // every 10 mins
 
 // Server Start
 app.listen(PORT, '0.0.0.0', () => {

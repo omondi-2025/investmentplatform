@@ -156,29 +156,31 @@
     }
 
     .support-modal {
-      display: none;
-      position: fixed;
-      top: 60px;
-      left: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 1rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      z-index: 999;
-    }
+  display: none;
+  position: fixed;
+  top: 60px;
+  left: 10px;
+  background: #004aad;
+  color: white;
+  border: 1px solid #ccc;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  z-index: 999;
+}
 
-    .support-modal a {
-      display: block;
-      margin: 10px 0;
-      color: var(--primary);
-      font-weight: bold;
-      text-decoration: none;
-    }
+.support-modal a {
+  display: block;
+  margin: 10px 0;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+}
 
-    .support-modal a:hover {
-      text-decoration: underline;
-    }
+.support-modal a:hover {
+  text-decoration: underline;
+  color: yellow;
+}
 
     @media (max-width: 500px) {
       .wallet-stats {
@@ -191,7 +193,7 @@
 
   <header>
     <button class="support-btn" onclick="toggleSupport()">🗣️ Support</button>
-    <h3>Trustcode</h3>
+    <h3 style="color: yellow;">Trustcode</h3>
     <button onclick="logout()">Logout</button>
   </header>
 
@@ -241,36 +243,43 @@
     window.location.href = "login.html";
   }
 
-  function toggleSupport() {
-    const box = document.getElementById("supportBox");
-    box.style.display = box.style.display === "block" ? "none" : "block";
+ function toggleSupport() {
+  const box = document.getElementById("supportBox");
+  if (box.style.display === "block") {
+    box.style.opacity = 0;
+    setTimeout(() => box.style.display = "none", 200);
+  } else {
+    box.style.display = "block";
+    box.style.opacity = 0;
+    setTimeout(() => box.style.opacity = 1, 10);
+  }
+} // ✅ CLOSES toggleSupport properly
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const BASE_URL = "https://investmentplatform.onrender.com";
+  const currentUser = JSON.parse(localStorage.getItem("tc_user"));
+
+  if (!currentUser || !currentUser._id) {
+    window.location.href = "login.html";
+    return;
   }
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    const BASE_URL = "https://investmentplatform.onrender.com";
-    const currentUser = JSON.parse(localStorage.getItem("tc_user"));
+  try {
+    const res = await fetch(`${BASE_URL}/api/user/${currentUser._id}`);
+    const user = await res.json();
 
-    if (!currentUser || !currentUser._id) {
-      window.location.href = "login.html";
-      return;
-    }
-
-    try {
-      const res = await fetch(`${BASE_URL}/api/user/${currentUser._id}`);
-      const user = await res.json();
-
-      document.getElementById("userName").textContent = user.fullName || "User";
-      document.getElementById("userEmail").textContent = user.email || "";
-      document.getElementById("wallet").textContent = user.wallet || 0;
-      document.getElementById("cashouts").textContent = user.cashouts || 0;
-      document.getElementById("expense").textContent = user.expense || 0;
-      document.getElementById("income").textContent = user.dailyIncome || 0;
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
-      alert("⚠️ Failed to load user data. Please try logging in again.");
-      logout();
-    }
-  });
+    document.getElementById("userName").textContent = user.fullName || "User";
+    document.getElementById("userEmail").textContent = user.email || "";
+    document.getElementById("wallet").textContent = user.wallet || 0;
+    document.getElementById("cashouts").textContent = user.cashouts || 0;
+    document.getElementById("expense").textContent = user.expense || 0;
+    document.getElementById("income").textContent = user.dailyIncome || 0;
+  } catch (error) {
+    console.error("Failed to fetch user:", error);
+    alert("⚠️ Failed to load user data. Please try logging in again.");
+    logout();
+  }
+});
 </script>
 </body>
 </html>

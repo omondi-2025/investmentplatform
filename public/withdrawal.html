@@ -105,7 +105,7 @@
   </header>
 
   <div class="balance-box">
-    Wallet Balance: KES <span id="walletBalance">...</span>
+    Wallet Balance: KES <span id="walletBalance">Loading...</span>
   </div>
 
   <div class="container">
@@ -123,8 +123,13 @@
        <p style="font-size: 14px; color: #555; margin-top: 8px;">
   ⚠️ A <strong>15%</strong> tax will be deducted from the requested amount.
 </p>
-     <div id="taxPreview" style="margin-top: 10px; font-size: 14px; color: #004aad;"></div>
-	 
+
+<p style="font-size: 14px; color: #d00000; margin-top: 5px;">
+  🚫 <strong>Note:</strong> Deposited or recharged amounts <strong>cannot be withdrawn</strong>. Only referral bonuses and earnings from investment packages are eligible for withdrawal.
+</p>
+
+<div id="taxPreview" style="margin-top: 10px; font-size: 14px; color: #004aad;"></div>
+
     <h3>Your Withdrawal History</h3>
     <ul id="historyList"><li>Loading...</li></ul>
   </div>
@@ -162,10 +167,10 @@
     const history = await res.json();
     console.log("Withdrawal history data:", history); // ADD THIS
 
-    if (!Array.isArray(history) || history.length === 0) {
-      historyList.innerHTML = "<li>No withdrawal history yet.</li>";
-      return;
-    }
+    if (!Array.isArray(history)) {
+  historyList.innerHTML = "<li>No withdrawal history yet.</li>";
+  return;
+  }
 
     historyList.innerHTML = "";
     history.forEach(item => {
@@ -197,7 +202,10 @@
       await loadHistory();
 
       withdrawForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+        const submitBtn = withdrawForm.querySelector("button");
+submitBtn.disabled = true;
+submitBtn.textContent = "Submitting...";
+		e.preventDefault();
         withdrawMessage.textContent = "";
         withdrawMessage.className = "alert";
 
@@ -205,23 +213,29 @@
         const phone = document.getElementById("phone").value.trim();
         const hour = new Date().getHours();
         
-        if (hour < 9 || hour >= 18) {
-          withdrawMessage.textContent = "❌ Withdrawals allowed only between 9AM and 6PM.";
-          withdrawMessage.classList.add("error");
-          return;
-        }
+       if (hour < 9 || hour >= 18) {
+  withdrawMessage.textContent = "❌ Withdrawals allowed only between 9AM and 6PM.";
+  withdrawMessage.classList.add("error");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Request Withdrawal";
+  return;
+  }
 
-        if (isNaN(amount) || amount < 150) {
-          withdrawMessage.textContent = "❌ Minimum withdrawal amount is Ksh 150.";
-          withdrawMessage.classList.add("error");
-          return;
-        }
+       if (isNaN(amount) || amount < 150) {
+  withdrawMessage.textContent = "❌ Minimum withdrawal amount is Ksh 150.";
+  withdrawMessage.classList.add("error");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Request Withdrawal";
+  return;
+  }
 
         if (userData.wallet < amount) {
-          withdrawMessage.textContent = "❌ Insufficient wallet balance.";
-          withdrawMessage.classList.add("error");
-          return;
-        }
+  withdrawMessage.textContent = "❌ Insufficient wallet balance.";
+  withdrawMessage.classList.add("error");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Request Withdrawal";
+  return;
+ }
 
         try {
           const res = await fetch(`${apiUrl}/api/withdraw`, {
@@ -236,21 +250,27 @@
 
           const data = await res.json();
           if (data.success) {
-            withdrawMessage.textContent = `✅ Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
-            withdrawMessage.classList.add("success");
-            await fetchUserData();
-            await loadHistory();
-            withdrawForm.reset();
-			document.getElementById("taxPreview").textContent = "";
-          } else {
-            withdrawMessage.textContent = "❌ " + (data.message || "Withdrawal failed.");
-            withdrawMessage.classList.add("error");
-          }
+  withdrawMessage.textContent = `✅ Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
+  withdrawMessage.classList.add("success");
+  await fetchUserData();
+  await loadHistory();
+  withdrawForm.reset();
+  document.getElementById("taxPreview").textContent = "";
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Request Withdrawal";
+  } else {
+  withdrawMessage.textContent = "❌ " + (data.message || "Withdrawal failed.");
+  withdrawMessage.classList.add("error");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Request Withdrawal";
+}
         } catch (err) {
-          console.error("Withdrawal error:", err);
-          withdrawMessage.textContent = "❌ Server error occurred.";
-          withdrawMessage.classList.add("error");
-        }
+  console.error("Withdrawal error:", err);
+  withdrawMessage.textContent = "❌ Server error occurred.";
+  withdrawMessage.classList.add("error");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Request Withdrawal";
+}
       });
     });
   </script>

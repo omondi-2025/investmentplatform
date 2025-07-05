@@ -39,7 +39,11 @@ const investmentSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  lastPayoutDate: {
+  type: Date,
+  default: Date.now
+}
 });
 
 module.exports = mongoose.model('Investment', investmentSchema);

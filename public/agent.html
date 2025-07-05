@@ -16,6 +16,7 @@
       color: white;
       padding: 1rem;
       text-align: center;
+      position: relative;
     }
     .container {
       max-width: 900px;
@@ -95,10 +96,39 @@
     button:hover {
       background: #003080;
     }
+    .back-arrow {
+      position: absolute;
+      left: 1rem;
+      top: 1rem;
+      font-size: 1.6rem;
+      text-decoration: none;
+      background: #003f8a;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: background 0.3s ease;
+    }
+    .back-arrow:hover {
+      background: #002d66;
+    }
+	.back-arrow::after {
+  content: " Home";
+  font-size: 1rem;
+  margin-left: 6px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  vertical-align: middle;
+}
+.back-arrow:hover::after {
+  opacity: 1;
+}
   </style>
 </head>
 <body>
   <header>
+    <a href="index.html" class="back-arrow">🔙</a>
     <h1>Agent Dashboard</h1>
   </header>
 
@@ -162,7 +192,7 @@
 
     document.getElementById("agentName").textContent = userData.fullName;
 
-    const referralUrl = `https://yourtrustcodesite.com/signup.html?ref=${userData.referralCode}`;
+    const referralUrl = `https://investmentplatform-three.vercel.app/signup.html?ref=${userData.referralCode}`;
     document.getElementById("referralLink").value = referralUrl;
     document.getElementById("referralLink2").value = referralUrl;
 
@@ -175,25 +205,24 @@
       document.getElementById("totalWithdrawn").textContent = data.totalWithdrawn.toFixed(2);
       document.getElementById("agentBalance").textContent = (data.totalEarnings - data.totalWithdrawn).toFixed(2);
     } catch (err) {
-      console.error("Failed to load agent data:", err);
-    }
+  console.error("Failed to load agent data:", err);
+  alert("⚠️ Could not load dashboard data. Please check your internet or try again later.");
+}
   }
 
   function copyReferral() {
-    const input = document.getElementById("referralLink");
-    input.select();
-    input.setSelectionRange(0, 99999);
-    document.execCommand("copy");
-    alert("✅ Referral link copied!");
-  }
+  const input = document.getElementById("referralLink");
+  navigator.clipboard.writeText(input.value)
+    .then(() => alert("✅ Referral link copied!"))
+    .catch(() => alert("❌ Failed to copy link."));
+}
 
-  function copyReferralLink() {
-    const input = document.getElementById("referralLink2");
-    input.select();
-    input.setSelectionRange(0, 99999);
-    document.execCommand("copy");
-    alert("✅ Referral link copied!");
-  }
+function copyReferralLink() {
+  const input = document.getElementById("referralLink2");
+  navigator.clipboard.writeText(input.value)
+    .then(() => alert("✅ Referral link copied!"))
+    .catch(() => alert("❌ Failed to copy link."));
+}
 
   document.addEventListener("DOMContentLoaded", loadAgentData);
   </script>
