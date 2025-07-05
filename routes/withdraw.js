@@ -9,30 +9,37 @@ router.post('/', async (req, res) => {
     const { uid, name, phone, amount } = req.body;
 
     if (!uid || !amount || amount < 150) {
-      return res.status(400).json({ message: "Invalid input" });
+      return res.status(400).json({ message: "Minimum withdrawal amount is Ksh 150." });
     }
 
     const user = await User.findById(uid);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Prevent multiple withdrawals per day
-   // Define today's start and end
-const startOfDay = new Date();
-startOfDay.setHours(0, 0, 0, 0);
+    // 💡 Restrict withdrawal to non-deposit earnings
+    const allowedWithdrawal = user.wallet - user.expense;
+    if (allowedWithdrawal < amount) {
+      return res.status(400).json({
+        message: "You can only withdraw from your earnings (not deposited capital)."
+      });
+    }
 
-const endOfDay = new Date();
-endOfDay.setHours(23, 59, 59, 999);
+    // ⏱ Prevent multiple withdrawals per day
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-// Find if a withdrawal exists for today
-const existing = await Withdrawal.findOne({
-  uid,
-  createdAt: { $gte: startOfDay, $lte: endOfDay }
-});
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
 
-if (existing) {
-  return res.status(400).json({ message: "Only one withdrawal allowed per day" });
-}
+    const existing = await Withdrawal.findOne({
+      uid,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
 
+    if (existing) {
+      return res.status(400).json({ message: "Only one withdrawal allowed per day" });
+    }
+
+    // ✅ Proceed
     const tax = Math.ceil(amount * 0.15);
     const net = amount - tax;
 
@@ -43,13 +50,15 @@ if (existing) {
       amount,
       tax,
       net,
-      status: 'pending'
+      status: 'pending',
+      createdAt: new Date()
     });
 
     await withdrawal.save();
 
     // Deduct from wallet
     user.wallet -= amount;
+    user.cashouts += amount;
     await user.save();
 
     res.status(201).json({ message: "Withdrawal request submitted", withdrawal });
@@ -58,3 +67,5 @@ if (existing) {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+module.exports = router;

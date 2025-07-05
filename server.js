@@ -104,73 +104,12 @@ app.post("/api/signup", async (req, res) => {
 });
 
 // Withdrawal
+// Models
 const Withdrawal = require('./models/Withdrawal');
+const withdrawalRoutes = require('./routes/withdrawal');
 
-// POST: Create withdrawal
-app.post("/api/withdraw", async (req, res) => {
-  try {
-    const { uid, amount, phone } = req.body;
-
-    if (!uid || !amount || !phone) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
-    }
-
-    const user = await User.findById(uid);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    if (user.wallet < amount) {
-      return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
-    }
-
-    // ✅ Check for at least one active investment
-    const hasInvestment = await Investment.exists({ uid: uid });
-    if (!hasInvestment) {
-      return res.status(403).json({ success: false, message: "You must invest in a plan before withdrawing." });
-    }
-
-    // ✅ Restrict withdrawal to once per day
-   const todayStart = new Date();
-   todayStart.setHours(0, 0, 0, 0);
-
-   const todayEnd = new Date();
-   todayEnd.setHours(23, 59, 59, 999);
-
-   const alreadyWithdrawn = await Withdrawal.exists({
-   uid,
-   createdAt: { $gte: todayStart, $lte: todayEnd }
-   });
-
-   if (alreadyWithdrawn) {
-   return res.status(429).json({ success: false, message: "You can only make one withdrawal per day." });
-   }
-
-    // ✅ Deduct and mark as pending
-    const tax = Math.ceil(amount * 0.15);
-    const net = amount - tax;
-
-    user.wallet -= amount;
-    user.cashouts += amount;
-    await user.save();
-
-    const newWithdrawal = new Withdrawal({
-      uid,
-      amount,
-      phone,
-      tax,
-      net,
-      status: "pending",
-      createdAt: new Date()
-    });
-
-    await newWithdrawal.save();
-
-    res.json({ success: true, message: "Withdrawal submitted", tax, net });
-
-  } catch (err) {
-    console.error("Withdraw error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
+// Routes
+app.use('/api/withdraw', withdrawalRoutes);
 
 // ✅ GET: Withdrawal history
 app.get("/api/withdrawals/:userId", async (req, res) => {
