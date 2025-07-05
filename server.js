@@ -151,20 +151,21 @@ app.post('/api/invest', async (req, res) => {
       return res.status(400).json({ message: "Invalid investment data" });
     }
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+   const user = await User.findById(userId);
+if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (user.wallet < amount) {
-      return res.status(400).json({ message: "Insufficient wallet balance" });
-    }
+if (user.wallet < amount) {
+  return res.status(400).json({ message: "Insufficient wallet balance" });
+}
 
-    const startDate = new Date();
-    const endDate = new Date(startDate.getTime() + duration * 86400000); // 86400000 ms/day
+const startDate = new Date();
+const endDate = new Date(startDate.getTime() + duration * 86400000);
 
-    user.wallet += validAmount; // Use validAmount instead of amount
-    user.expense += amount;
-    user.dailyIncome += returns / duration; // Optional logic
-    await user.save();
+// Deduct investment amount from wallet
+user.wallet -= amount;
+user.expense += amount;
+user.dailyIncome += returns / duration;
+await user.save();
 
    const newInvestment = new Investment({
   uid: userId,
