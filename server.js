@@ -106,7 +106,7 @@ app.post("/api/signup", async (req, res) => {
 // Withdrawal
 // Models
 const Withdrawal = require('./models/Withdrawal');
-const withdrawalRoutes = require('./routes/withdrawal');
+const withdrawalRoutes = require('./routes/withdraw');
 
 // Routes
 app.use('/api/withdraw', withdrawalRoutes);
