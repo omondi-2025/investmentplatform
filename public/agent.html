@@ -192,37 +192,42 @@
 
     document.getElementById("agentName").textContent = userData.fullName;
 
+    // Generate the referral URL
     const referralUrl = `https://investmentplatform-three.vercel.app/signup.html?ref=${userData.referralCode}`;
     document.getElementById("referralLink").value = referralUrl;
     document.getElementById("referralLink2").value = referralUrl;
 
     try {
       const res = await fetch(`https://investmentplatform.onrender.com/api/agent/dashboard/${userData.referralCode}`);
+      if (!res.ok) {
+        throw new Error("Failed to fetch agent data");
+      }
       const data = await res.json();
 
+      // Display data in the UI
       document.getElementById("totalReferrals").textContent = data.totalReferrals;
       document.getElementById("totalEarnings").textContent = data.totalEarnings.toFixed(2);
       document.getElementById("totalWithdrawn").textContent = data.totalWithdrawn.toFixed(2);
       document.getElementById("agentBalance").textContent = (data.totalEarnings - data.totalWithdrawn).toFixed(2);
     } catch (err) {
-  console.error("Failed to load agent data:", err);
-  alert("⚠️ Could not load dashboard data. Please check your internet or try again later.");
-}
+      console.error("Failed to load agent data:", err);
+      alert("⚠️ Could not load dashboard data. Please check your internet or try again later.");
+    }
   }
 
   function copyReferral() {
-  const input = document.getElementById("referralLink");
-  navigator.clipboard.writeText(input.value)
-    .then(() => alert("✅ Referral link copied!"))
-    .catch(() => alert("❌ Failed to copy link."));
-}
+    const input = document.getElementById("referralLink");
+    navigator.clipboard.writeText(input.value)
+      .then(() => alert("✅ Referral link copied!"))
+      .catch(() => alert("❌ Failed to copy link."));
+  }
 
-function copyReferralLink() {
-  const input = document.getElementById("referralLink2");
-  navigator.clipboard.writeText(input.value)
-    .then(() => alert("✅ Referral link copied!"))
-    .catch(() => alert("❌ Failed to copy link."));
-}
+  function copyReferralLink() {
+    const input = document.getElementById("referralLink2");
+    navigator.clipboard.writeText(input.value)
+      .then(() => alert("✅ Referral link copied!"))
+      .catch(() => alert("❌ Failed to copy link."));
+  }
 
   document.addEventListener("DOMContentLoaded", loadAgentData);
   </script>

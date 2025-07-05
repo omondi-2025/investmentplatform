@@ -64,11 +64,6 @@ app.post("/api/login", async (req, res) => {
 });
 
 // Auth: Signup
-
-function generateReferralCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase(); // e.g. "AB12CD"
-}
-
 app.post("/api/signup", async (req, res) => {
   try {
     const { fullName, phone, email, password, refCode } = req.body;
@@ -80,14 +75,24 @@ app.post("/api/signup", async (req, res) => {
       return res.status(400).json({ success: false, message: "Email already exists" });
     }
 
+    // Generate referral code for the new user
+    const referralCode = generateReferralCode();
+
+    // Handle the referrer (referredBy)
+    let referredBy = null;
+    if (refCode) {
+      const refUser = await User.findOne({ referralCode: refCode });
+      referredBy = refUser ? refUser.referralCode : null;
+    }
+
     // Create new user with referral code
     const user = new User({
       fullName,
       phone,
       email: lowerEmail,
       password,
-      referralCode: generateReferralCode(), // each user gets a unique referralCode
-      referredBy: refCode || null,          // the referrer, if present
+      referralCode,
+      referredBy,
       wallet: 0,
       cashouts: 0,
       expense: 0,
@@ -157,23 +162,23 @@ app.post('/api/invest', async (req, res) => {
     user.dailyIncome += returns / duration; // Optional logic
     await user.save();
 
-    const newInvestment = new Investment({
-      uid: userId,
-      planName,
-      planAmount: amount,
-      durationDays: duration,
-      returnAmount: returns,
-      startDate,
-      endDate,
-      status: 'active',
-      createdAt: new Date(),
-	  lastPayoutDate: new Date() // 👈 ADD THIS
-    });
+   const newInvestment = new Investment({
+  uid: userId,
+  planName,
+  planAmount: amount,
+  durationDays: duration,
+  returnAmount: returns,
+  startDate,
+  endDate,
+  status: 'active',
+  createdAt: new Date(),
+  lastPayoutDate: new Date() // 👈 ADD THIS
+});
 
-  await newInvestment.save();
+await newInvestment.save();
 
-  // 👇 ADD referral logic right after this
-  if (user.referredBy) {
+// Referral Bonus Logic (Add right after saving the new investment)
+if (user.referredBy) {
   const level1 = await User.findOne({ referralCode: user.referredBy });
   if (level1) {
     const reward1 = amount * 0.20;
