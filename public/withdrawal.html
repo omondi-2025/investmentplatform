@@ -206,8 +206,9 @@
 submitBtn.disabled = true;
 submitBtn.textContent = "Submitting...";
 		e.preventDefault();
-        withdrawMessage.textContent = "";
-        withdrawMessage.className = "alert";
+        withdrawMessage.className = ""; // Clear all classes
+        withdrawMessage.style.display = "none"; // Hide first
+
 
         const amount = parseFloat(document.getElementById("amount").value);
         const phone = document.getElementById("phone").value.trim();
@@ -249,20 +250,23 @@ submitBtn.textContent = "Submitting...";
           });
 
           const data = await res.json();
-          if (data.success) {
-  withdrawMessage.textContent = `✅ Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
-  withdrawMessage.classList.add("success");
-  await fetchUserData();
-  await loadHistory();
-  withdrawForm.reset();
-  document.getElementById("taxPreview").textContent = "";
-  submitBtn.disabled = false;
-  submitBtn.textContent = "Request Withdrawal";
-  } else {
+withdrawMessage.className = "";
+withdrawMessage.style.display = "none";
+
+if (data.success) {
+ withdrawMessage.textContent = `✅ Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
+withdrawMessage.className = "alert success";
+withdrawMessage.style.display = "block";
+setTimeout(() => {
+  withdrawMessage.style.display = "none";
+}, 5000);
+} else {
   withdrawMessage.textContent = "❌ " + (data.message || "Withdrawal failed.");
-  withdrawMessage.classList.add("error");
-  submitBtn.disabled = false;
-  submitBtn.textContent = "Request Withdrawal";
+withdrawMessage.className = "alert error";
+withdrawMessage.style.display = "block";
+setTimeout(() => {
+  withdrawMessage.style.display = "none";
+}, 5000);
 }
         } catch (err) {
   console.error("Withdrawal error:", err);
