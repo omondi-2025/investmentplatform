@@ -9,7 +9,7 @@ const Withdrawal = require('../models/Withdrawal');
 router.get("/dashboard/:refCode", async (req, res) => {
   try {
     const { refCode } = req.params;
-    const user = await User.findOne({ refCode });
+    const user = await User.findOne({ referralCode: refCode });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Agent not found" });
@@ -20,9 +20,9 @@ router.get("/dashboard/:refCode", async (req, res) => {
     const totalReferrals = await User.countDocuments({ referredBy: refCode });
 
     const totalEarnings = await Investment.aggregate([
-      { $match: { agentId: userId } },
-      { $group: { _id: null, total: { $sum: "$referralEarnings" } } }
-    ]);
+  { $match: { referredBy: userId } }, // Changed to referredBy instead of agentId
+  { $group: { _id: null, total: { $sum: "$referralEarnings" } } }
+]);
     
     const totalWithdrawn = await Withdrawal.aggregate([
       { $match: { userId } },
@@ -58,16 +58,17 @@ router.get("/referrals/:referralCode", async (req, res) => {
     // Utility to calculate total deposits per user
     const Recharge = require('../models/Recharge');
     const computeDeposits = async (users) => {
-      return Promise.all(users.map(async (u) => {
-        const deposits = await Recharge.find({ uid: u._id });
-        const totalDeposited = deposits.reduce((sum, d) => sum + (d.amount || 0), 0);
-        return {
-          fullName: u.fullName,
-          email: u.email,
-          totalDeposited
-        };
-      }));
+  return Promise.all(users.map(async (u) => {
+    const deposits = await Recharge.find({ uid: u._id });
+    const totalDeposited = deposits.reduce((sum, d) => sum + (d.amount || 0), 0);
+    return {
+      fullName: u.fullName,
+      email: u.email,
+      expense: totalDeposited,
+      createdAt: u.createdAt
     };
+  }));
+};
 
     const level1WithDeposits = await computeDeposits(level1);
     const level2WithDeposits = await computeDeposits(level2);

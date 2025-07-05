@@ -79,11 +79,15 @@ app.post("/api/signup", async (req, res) => {
     const referralCode = generateReferralCode();
 
     // Handle the referrer (referredBy)
-    let referredBy = null;
+	let referredBy = null; // 👈 Add this line before the `if (refCode)` block
     if (refCode) {
-      const refUser = await User.findOne({ referralCode: refCode });
-      referredBy = refUser ? refUser.referralCode : null;
-    }
+  const refUser = await User.findOne({ referralCode: refCode });
+  if (refUser) {
+    referredBy = refUser.referralCode;
+  } else {
+    return res.status(400).json({ success: false, message: "Invalid referral code" });
+  }
+}
 
     // Create new user with referral code
     const user = new User({
@@ -157,7 +161,7 @@ app.post('/api/invest', async (req, res) => {
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + duration * 86400000); // 86400000 ms/day
 
-    user.wallet -= amount;
+    user.wallet += validAmount; // Use validAmount instead of amount
     user.expense += amount;
     user.dailyIncome += returns / duration; // Optional logic
     await user.save();
@@ -179,22 +183,25 @@ await newInvestment.save();
 
 // Referral Bonus Logic (Add right after saving the new investment)
 if (user.referredBy) {
+  // Level 1 referral
   const level1 = await User.findOne({ referralCode: user.referredBy });
   if (level1) {
-    const reward1 = amount * 0.20;
+    const reward1 = amount * 0.20; // 20% of the amount
     level1.wallet += reward1;
     await level1.save();
 
+    // Level 2 referral
     if (level1.referredBy) {
       const level2 = await User.findOne({ referralCode: level1.referredBy });
       if (level2) {
-        const reward2 = amount * 0.01;
+        const reward2 = amount * 0.01; // 1% of the amount
         level2.wallet += reward2;
         await level2.save();
       }
     }
   }
 }
+
     res.json({ message: "Investment successful", newWallet: user.wallet });
   } catch (err) {
     console.error("Investment error:", err);
@@ -215,13 +222,17 @@ app.post('/api/recharge', async (req, res) => {
 
     const user = await User.findById(uid);
     if (!user) return res.status(404).json({ error: "User not found." });
-
+     
+	 const validAmount = Number(amount);
+if (isNaN(validAmount) || validAmount <= 0) {
+  return res.status(400).json({ error: "Invalid recharge amount" });
+}
     const recharge = await Recharge.create({
       uid,
       name: user.fullName,
       phone: user.phone,
       message,
-      amount,
+      amount: validAmount,
       number,
       transactionCode,
       status: "confirmed"
