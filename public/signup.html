@@ -115,6 +115,9 @@
 
       <label for="password">Password</label>
       <input type="password" id="password" required minlength="6" placeholder="Minimum 6 characters" />
+      
+	  <label for="referralCode">Referral Code (optional)</label>
+      <input type="text" id="referralCode" placeholder="Enter referral code" />
 
       <button type="submit">Sign Up</button>
       <div id="signupMessage"></div>
@@ -133,6 +136,10 @@
     // Preserve referral code in login link
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get("ref");
+	if (refCode) {
+  const referralInput = document.getElementById("referralCode");
+  if (referralInput) referralInput.value = refCode;
+}
     if (refCode) loginLink.href = `login.html?ref=${refCode}`;
 
     signupForm.addEventListener("submit", async (e) => {
@@ -142,6 +149,7 @@
       const phone = document.getElementById("phone").value.trim();
       const email = document.getElementById("email").value.trim().toLowerCase();
       const password = document.getElementById("password").value.trim();
+      const referredBy = document.getElementById("referralCode").value.trim() || refCode;
 
       signupMessage.textContent = "";
       signupMessage.className = "";
@@ -159,12 +167,12 @@
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    fullName,
-    phone,
-    email,
-    password,
-    referredBy: refCode
-  })
+  fullName,
+  phone,
+  email,
+  password,
+  referredBy
+})
         });
 
         const data = await res.json();

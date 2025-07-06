@@ -12,11 +12,19 @@ const userSchema = new mongoose.Schema({
   referralCode: { type: String, required: true, unique: true },
   referredBy: { type: String },
   role: { type: String, default: "user" },
+  referralBonus: { type: Number, default: 0 }, // optional if you want to track total bonus
   referralHistory: {
     level1: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     level2: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   },
-  referralBonus: { type: Number, default: 0 }, // Track total earned referral bonuses
+  referrals: [ // ✅ this is what stores bonus records for history
+    {
+      email: String,
+      amount: Number,
+      level: Number, // 1 or 2
+      date: Date
+    }
+  ],
   createdAt: { type: Date, default: Date.now },
 });
 

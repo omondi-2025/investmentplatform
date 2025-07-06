@@ -162,6 +162,7 @@ const startDate = new Date();
 const endDate = new Date(startDate.getTime() + duration * 86400000);
 
 // Deduct investment amount from wallet
+// Correctly update wallet after checking sufficient balance
 user.wallet -= amount;
 user.expense += amount;
 user.dailyIncome += returns / duration;
@@ -183,20 +184,37 @@ await user.save();
 await newInvestment.save();
 
 // Referral Bonus Logic (Add right after saving the new investment)
-if (user.referredBy) {
   // Level 1 referral
+if (user.referredBy) {
   const level1 = await User.findOne({ referralCode: user.referredBy });
-  if (level1) {
-    const reward1 = amount * 0.20; // 20% of the amount
-    level1.wallet += reward1;
-    await level1.save();
 
-    // Level 2 referral
+  if (level1) {
+    const reward1 = amount * 0.20;
+    level1.wallet += reward1;
+
+    level1.referrals.push({
+      email: user.email,
+      amount,
+      level: 1,
+      date: new Date()
+    });
+
+    await level1.save();
+	
+	// Level 2 referral
     if (level1.referredBy) {
       const level2 = await User.findOne({ referralCode: level1.referredBy });
       if (level2) {
-        const reward2 = amount * 0.01; // 1% of the amount
+        const reward2 = amount * 0.01;
         level2.wallet += reward2;
+
+        level2.referrals.push({
+          email: user.email,
+          amount,
+          level: 2,
+          date: new Date()
+        });
+
         await level2.save();
       }
     }
@@ -315,6 +333,18 @@ app.get('/api/user/:id', async (req, res) => {
 // Routes
 const agentRoutes = require('./routes/agent'); // ✅ Make sure routes/agent.js exists
 app.use('/api/agent', agentRoutes);
+
+app.get('/api/referrals/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ referrals: user.referrals || [] });
+  } catch (err) {
+    console.error("Referral fetch error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // Auto-update pending withdrawals to paid after 20 minutes
 setInterval(async () => {

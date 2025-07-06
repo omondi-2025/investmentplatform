@@ -17,70 +17,27 @@ router.get("/dashboard/:refCode", async (req, res) => {
 
     const userId = user._id;
 
+    // Count direct referrals
     const totalReferrals = await User.countDocuments({ referredBy: refCode });
 
-    const totalEarnings = await Investment.aggregate([
-  { $match: { referredBy: userId } }, // Changed to referredBy instead of agentId
-  { $group: { _id: null, total: { $sum: "$referralEarnings" } } }
-]);
-    
+    // Calculate total referral earnings from stored referral logs
+    const totalEarnings = (user.referrals || []).reduce((sum, r) => sum + (r.amount || 0), 0);
+
+    // Total withdrawn amount by agent
     const totalWithdrawn = await Withdrawal.aggregate([
-      { $match: { userId } },
+      { $match: { uid: userId } },
       { $group: { _id: null, total: { $sum: "$amount" } } }
     ]);
 
     res.json({
+      success: true,
       totalReferrals,
-      totalEarnings: totalEarnings[0]?.total || 0,
+      totalEarnings,
       totalWithdrawn: totalWithdrawn[0]?.total || 0
     });
 
   } catch (err) {
     console.error("Agent dashboard error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-// GET /api/agent/referrals/:referralCode
-router.get("/referrals/:referralCode", async (req, res) => {
-  try {
-    const { referralCode } = req.params;
-
-    // Level 1 users (referred directly by this user)
-    const level1 = await User.find({ referredBy: referralCode });
-
-    // Get referral codes of level 1 users
-    const level1RefCodes = level1.map(u => u.referralCode);
-
-    // Level 2 users (referred by level 1 users)
-    const level2 = await User.find({ referredBy: { $in: level1RefCodes } });
-
-    // Utility to calculate total deposits per user
-    const Recharge = require('../models/Recharge');
-    const computeDeposits = async (users) => {
-  return Promise.all(users.map(async (u) => {
-    const deposits = await Recharge.find({ uid: u._id });
-    const totalDeposited = deposits.reduce((sum, d) => sum + (d.amount || 0), 0);
-    return {
-      fullName: u.fullName,
-      email: u.email,
-      expense: totalDeposited,
-      createdAt: u.createdAt
-    };
-  }));
-};
-
-    const level1WithDeposits = await computeDeposits(level1);
-    const level2WithDeposits = await computeDeposits(level2);
-
-    res.json({
-      success: true,
-      level1: level1WithDeposits,
-      level2: level2WithDeposits
-    });
-
-  } catch (err) {
-    console.error("Referral history error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
