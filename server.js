@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const cron = require('node-cron');
 
 dotenv.config();
 const app = express();
@@ -31,6 +32,8 @@ mongoose.connect(process.env.MONGO_URI, {
 const User = require('./models/User');
 const Recharge = require('./models/Recharge'); // ✅ Make sure this file exists
 const Investment = require('./models/Investment');
+const payoutJob = require('./cron/investmentPayout');
+payoutJob(); // Start cron job
 
 // Default Route
 app.get('/', (req, res) => {
@@ -364,31 +367,38 @@ setInterval(async () => {
   }
 }, 60 * 1000); // check every minute
  
+// cron
+ cron.schedule('*/10 * * * *', async () => {
+  try {
+    console.log("⏰ Running investment payout check...");
 
- setInterval(async () => {
-  const now = new Date();
-  const investments = await Investment.find({ status: 'active' });
+    const now = new Date();
+    const investments = await Investment.find({ status: 'active' });
 
-  for (const inv of investments) {
-    const last = new Date(inv.lastPayoutDate);
-    const nextDue = new Date(last.getTime() + 24 * 60 * 60 * 1000);
-    if (now >= nextDue && inv.durationDays > 0) {
-      const user = await User.findById(inv.uid);
-      const dailyPay = inv.returnAmount / inv.durationDays;
+    for (const inv of investments) {
+      const last = new Date(inv.lastPayoutDate);
+      const nextDue = new Date(last.getTime() + 24 * 60 * 60 * 1000);
 
-      user.wallet += dailyPay;
-      await user.save();
+      if (now >= nextDue && inv.durationDays > 0) {
+        const user = await User.findById(inv.uid);
+        const dailyPay = inv.returnAmount / inv.durationDays;
 
-      inv.durationDays -= 1;
-      inv.lastPayoutDate = now;
-      if (inv.durationDays === 0) inv.status = 'completed';
+        user.wallet += dailyPay;
+        await user.save();
 
-      await inv.save();
-      console.log(`💰 Paid ${dailyPay.toFixed(2)} to ${user.fullName}`);
+        inv.durationDays -= 1;
+        inv.lastPayoutDate = now;
+        if (inv.durationDays === 0) inv.status = 'completed';
+
+        await inv.save();
+
+        console.log(`💰 Paid ${dailyPay.toFixed(2)} to ${user.fullName}`);
+      }
     }
+  } catch (err) {
+    console.error("🚨 Cron job error:", err.message);
   }
-}, 10 * 60 * 1000); // every 10 mins
-
+});
 // Server Start
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
