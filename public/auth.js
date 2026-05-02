@@ -1,9 +1,6 @@
 // auth.js – Trustcode Auth System (MongoDB Version)
 const LOCAL_STORAGE_KEY = "tc_user";
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "::1"];
-const BASE_URL = LOCAL_HOSTS.includes(window.location.hostname)
-  ? window.location.origin
-  : "https://investmentplatform.onrender.com";
+const BASE_URL = window.location.origin;
 
 // 1. Store user locally
 function storeUserLocally(userData) {

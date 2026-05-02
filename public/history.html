@@ -58,9 +58,7 @@
 
   <script src="auth.js"></script>
   <script>
-    const BASE_URL = ["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(window.location.hostname)
-      ? window.location.origin
-      : "https://investmentplatform.onrender.com";
+    const BASE_URL = window.location.origin;
 
     function fmt(value) {
       return `KES ${Number(value || 0).toFixed(2)}`;
@@ -144,7 +142,15 @@
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
-      await protectPage();
+      try {
+        await Promise.race([
+          protectPage(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Session check timeout")), 8000))
+        ]);
+      } catch (_) {
+        // Do not block the page forever if session refresh hangs.
+      }
+
       const user = getCurrentUser();
       if (!user || !user._id) {
         window.location.href = "login.html";

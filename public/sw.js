@@ -1,9 +1,6 @@
-const CACHE_NAME = "tust-vanilla-cache-v1";
+const CACHE_NAME = "tust-vanilla-cache-v2";
 const APP_SHELL = [
   "/",
-  "/index.html",
-  "/styles.css",
-  "/nav.js",
   "/manifest.webmanifest",
   "/avatar-selfie.svg"
 ];
@@ -32,6 +29,15 @@ self.addEventListener("fetch", (event) => {
   // Never cache API responses; always hit network for fresh balances/history.
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Always fetch latest app pages/scripts/styles to avoid stale UI logic.
+  const destination = event.request.destination;
+  if (destination === "document" || destination === "script" || destination === "style") {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 
