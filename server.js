@@ -234,13 +234,23 @@ async function getUnifiedHistoryPayload(userId) {
     };
   });
 
-  const investmentItems = investments.map((inv) => ({
-    type: 'investment',
-    amount: inv.returnAmount || 0,
-    note: `${inv.planName || 'Investment'} earnings`,
-    status: inv.status,
-    date: inv.createdAt
-  }));
+  const investmentItems = investments.map((inv) => {
+    const totalDays = Number(inv.initialDurationDays || inv.durationDays || 1);
+    const remainingDays = Number(inv.durationDays || 0);
+    const daysCompleted = Math.max(0, totalDays - remainingDays);
+    const dailyPay = Number(inv.returnAmount || 0) / totalDays;
+    const actualEarned = inv.status === 'completed'
+      ? Number(inv.returnAmount || 0)
+      : parseFloat((dailyPay * daysCompleted).toFixed(2));
+
+    return {
+      type: 'investment',
+      amount: actualEarned,
+      note: `${inv.planName || 'Investment'} earnings`,
+      status: inv.status,
+      date: inv.createdAt
+    };
+  });
 
   const rechargeItems = recharges.map((rec) => ({
     type: 'recharge',
