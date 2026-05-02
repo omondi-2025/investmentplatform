@@ -1,10 +1,23 @@
 // nav.js — Injects the persistent bottom navigation bar on every page.
 // Include this script at the bottom of every user-facing page.
 (function () {
+  var excludedPages = ["login.html", "signup.html"];
+  var currentPage = window.location.pathname.split("/").pop() || "index.html";
+
+  if (excludedPages.includes(currentPage)) {
+    return;
+  }
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Non-blocking: app should work normally even if SW registration fails.
+      });
+    });
+  }
+
   var nav = document.createElement("nav");
   nav.id = "bottom-nav";
-
-  var currentPage = window.location.pathname.split("/").pop() || "index.html";
 
   var links = [
     { href: "index.html",      icon: "home",           label: "Home"     },

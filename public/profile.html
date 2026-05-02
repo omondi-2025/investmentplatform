@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>User Profile - TUST VANILLA</title>
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <style>
@@ -83,7 +84,7 @@
   <div class="container" style="margin-top:1rem; margin-bottom:1rem;">
     <h2>My Profile</h2>
     <div class="profile-img">
-      <img src="default-avatar.png" id="profileImage" alt="Profile Picture" />
+      <img src="avatar-selfie.svg" id="profileImage" alt="Profile Picture" />
     </div>
     <div class="info">
       <p><strong>Full Name:</strong> <span id="fullName">Loading...</span></p>
@@ -101,7 +102,8 @@
 
     <button onclick="window.location.href='edit-profile.html'">Edit Profile</button>
     <button class="secondary" onclick="window.location.href='change-password.html'">Change Password</button>
-    <a href="https://investmentplatform-three.vercel.app" target="_blank" class="btn btn-download" style="margin-top:15px;">Download App</a>
+    <button id="installAppBtn" class="btn btn-download" style="margin-top:15px;">Download App</button>
+    <button class="secondary" onclick="window.location.href='history.html'">History</button>
     <button class="secondary" onclick="window.location.href='index.html'">Back to Dashboard</button>
   </div>
 
@@ -109,6 +111,12 @@
   const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? window.location.origin
     : "https://investmentplatform.onrender.com";
+
+  let deferredInstallPrompt = null;
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+  });
 
   document.addEventListener("DOMContentLoaded", async () => {
     const storedUser = JSON.parse(localStorage.getItem("tc_user"));
@@ -166,6 +174,18 @@
     } catch (err) {
       console.error("Error loading investments:", err);
     }
+
+    const installBtn = document.getElementById("installAppBtn");
+    installBtn.addEventListener("click", async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
+      }
+
+      alert("To install on phone: open this site in Chrome, tap browser menu, then choose 'Add to Home screen'.");
+    });
   });
   </script>
   <script src="nav.js"></script>

@@ -23,22 +23,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ⏱ Prevent multiple withdrawals per day
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const existing = await Withdrawal.findOne({
-      uid,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    });
-
-    if (existing) {
-      return res.status(400).json({ message: "Only one withdrawal allowed per day" });
-    }
-
     // ✅ Proceed
     const tax = Math.ceil(amount * 0.15);
     const net = amount - tax;
