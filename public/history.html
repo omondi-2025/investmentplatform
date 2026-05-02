@@ -135,8 +135,12 @@
 
   <script src="auth.js"></script>
   <script>
-    const BASE_URL = window.location.origin;
+    const BASE_URL = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(window.location.hostname)
+      ? window.location.origin
+      : 'https://investmentplatform.onrender.com';
     let historyPollTimer = null;
+    const CACHE_RECHARGES_KEY = "tv_recharge_history";
+    const CACHE_WITHDRAWALS_KEY = "tv_withdraw_history";
 
     function fmt(value) {
       return `KES ${Number(value || 0).toFixed(2)}`;
@@ -219,19 +223,26 @@
       }
     }
 
-    async function loadTransactionHistory(userId) {
+    function getCachedArray(key) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function setCachedArray(key, data) {
+      try {
+        localStorage.setItem(key, JSON.stringify(Array.isArray(data) ? data : []));
+      } catch (_) {
+        // Ignore cache write failures.
+      }
+    }
+
+    function renderListsAndTotals(rechargeArray, withdrawalArray) {
       const rechargeList = document.getElementById("rechargeList");
       const withdrawalList = document.getElementById("withdrawalList");
-      rechargeList.innerHTML = '<li class="history-item">Loading recharge history...</li>';
-      withdrawalList.innerHTML = '<li class="history-item">Loading withdrawal history...</li>';
-
-      const [recharges, withdrawals] = await Promise.all([
-        fetchJsonWithTimeout(`${BASE_URL}/api/recharges/${userId}`),
-        fetchJsonWithTimeout(`${BASE_URL}/api/withdrawals/${userId}`)
-      ]);
-
-      const rechargeArray = Array.isArray(recharges) ? recharges : [];
-      const withdrawalArray = Array.isArray(withdrawals) ? withdrawals : [];
 
       const totalApprovedRecharges = rechargeArray
         .filter((r) => normalizeRechargeStatus(r.status) === "approved")
@@ -266,6 +277,39 @@
         withdrawalList.innerHTML = '<li class="history-item">No withdrawal history found.</li>';
       } else {
         withdrawalArray.forEach((item) => withdrawalList.appendChild(renderWithdrawalItem(item)));
+      }
+    }
+
+    async function loadTransactionHistory(userId) {
+      const rechargeList = document.getElementById("rechargeList");
+      const withdrawalList = document.getElementById("withdrawalList");
+      rechargeList.innerHTML = '<li class="history-item">Loading recharge history...</li>';
+      withdrawalList.innerHTML = '<li class="history-item">Loading withdrawal history...</li>';
+
+      const cachedRecharges = getCachedArray(CACHE_RECHARGES_KEY);
+      const cachedWithdrawals = getCachedArray(CACHE_WITHDRAWALS_KEY);
+      if (cachedRecharges.length || cachedWithdrawals.length) {
+        renderListsAndTotals(cachedRecharges, cachedWithdrawals);
+      }
+
+      const [rechargeResult, withdrawalResult] = await Promise.allSettled([
+        fetchJsonWithTimeout(`${BASE_URL}/api/recharges/${userId}`),
+        fetchJsonWithTimeout(`${BASE_URL}/api/withdrawals/${userId}`)
+      ]);
+
+      const rechargeArray = rechargeResult.status === "fulfilled" && Array.isArray(rechargeResult.value)
+        ? rechargeResult.value
+        : cachedRecharges;
+      const withdrawalArray = withdrawalResult.status === "fulfilled" && Array.isArray(withdrawalResult.value)
+        ? withdrawalResult.value
+        : cachedWithdrawals;
+
+      setCachedArray(CACHE_RECHARGES_KEY, rechargeArray);
+      setCachedArray(CACHE_WITHDRAWALS_KEY, withdrawalArray);
+      renderListsAndTotals(rechargeArray, withdrawalArray);
+
+      if (rechargeResult.status === "rejected" && withdrawalResult.status === "rejected") {
+        throw new Error("Unable to fetch recharge and withdrawal history right now.");
       }
     }
 
