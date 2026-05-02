@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>TUST VANILLA - Finance Records</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    .finance-wrap {
+      max-width: 860px;
+      margin: 1rem auto;
+      padding: 0 1rem 1rem;
+    }
+    .finance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .finance-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      padding: 0.95rem;
+      border: 1px solid var(--border);
+    }
+    .finance-card small {
+      display: block;
+      color: var(--text-2);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .finance-card strong {
+      color: var(--primary);
+      font-size: 1rem;
+    }
+    .finance-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .finance-actions button {
+      width: auto;
+      min-width: 150px;
+      padding: 0.6rem 1rem;
+    }
+    .record-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .record-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      padding: 0.9rem;
+      margin-bottom: 0.65rem;
+    }
+    .record-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 5px;
+    }
+    .record-meta {
+      color: var(--text-2);
+      font-size: 0.8rem;
+      margin-top: 3px;
+    }
+    .status-chip {
+      display: inline-block;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .status-chip.pending { background: #fef3c7; color: #92400e; }
+    .status-chip.approved { background: #dcfce7; color: #166534; }
+    .status-chip.rejected { background: #fee2e2; color: #991b1b; }
+    .status-chip.active { background: #dbeafe; color: #1e40af; }
+    .section-space {
+      margin-top: 0.9rem;
+    }
+    @media (max-width: 600px) {
+      .finance-grid { grid-template-columns: 1fr; }
+      .finance-actions { flex-direction: column; align-items: stretch; }
+      .finance-actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="profile.html" class="back-arrow"><span class="material-symbols-outlined">arrow_back</span></a>
+    <h3>TUST VANILLA - Finance Records</h3>
+    <span style="width:24px;"></span>
+  </header>
+
+  <div class="finance-wrap">
+    <div class="card" style="margin-bottom:0.9rem;">
+      <div class="finance-actions">
+        <div>
+          <div class="section-title" style="margin:0; border-bottom:none; padding-bottom:0;">Full Finance Progress</div>
+          <div class="record-meta">Download your full financial progress as a PDF document.</div>
+        </div>
+        <button id="downloadPdfBtn" type="button">Download PDF</button>
+      </div>
+      <div id="financeStatus" class="record-meta">Loading records...</div>
+    </div>
+
+    <div class="finance-grid">
+      <div class="finance-card"><small>Wallet Balance</small><strong id="fWallet">KES 0.00</strong></div>
+      <div class="finance-card"><small>Investment Earnings</small><strong id="fInvestment">KES 0.00</strong></div>
+      <div class="finance-card"><small>Approved Recharges</small><strong id="fRecharge">KES 0.00</strong></div>
+      <div class="finance-card"><small>Approved Withdrawals</small><strong id="fWithdrawal">KES 0.00</strong></div>
+      <div class="finance-card"><small>Referral Earnings</small><strong id="fReferral">KES 0.00</strong></div>
+      <div class="finance-card"><small>Total Expenditure</small><strong id="fExpenditure">KES 0.00</strong></div>
+      <div class="finance-card"><small>Profit Earned</small><strong id="fProfit">KES 0.00</strong></div>
+      <div class="finance-card"><small>Active Investments</small><strong id="fActiveInvestments">0</strong></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Activity Timeline</div>
+      <ul id="timelineList" class="record-list">
+        <li class="record-item">Loading activity timeline...</li>
+      </ul>
+    </div>
+
+    <div class="card section-space">
+      <div class="section-title">Investment Progress</div>
+      <ul id="investmentList" class="record-list">
+        <li class="record-item">Loading investment records...</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    const FINANCE_BASE_URL = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(window.location.hostname)
+      ? window.location.origin
+      : 'https://investmentplatform.onrender.com';
+    const LOCAL_STORAGE_KEY = 'tc_user';
+    const financeState = {
+      user: null,
+      history: { totals: {}, items: [] },
+      investments: []
+    };
+
+    function fmt(value) {
+      return `KES ${Number(value || 0).toFixed(2)}`;
+    }
+
+    function getCurrentUser() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || 'null');
+        return parsed && parsed._id ? parsed : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function normalizeTimelineStatus(type, status) {
+      const normalized = String(status || '').toLowerCase();
+      if (type === 'recharge' && normalized === 'confirmed') return 'approved';
+      if (type === 'withdrawal' && normalized === 'paid') return 'approved';
+      if (normalized === 'approved' || normalized === 'rejected' || normalized === 'pending') return normalized;
+      return normalized || 'active';
+    }
+
+    function safeDate(value) {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return 'Unknown date';
+      }
+      return parsed.toLocaleString();
+    }
+
+    function statusBadge(status) {
+      return `<span class="status-chip ${status}">${status}</span>`;
+    }
+
+    function sumNumbers(values) {
+      return values.reduce((total, value) => total + Number(value || 0), 0);
+    }
+
+    function getFinanceMetrics() {
+      const user = financeState.user || {};
+      const totals = financeState.history.totals || {};
+      const investments = financeState.investments || [];
+      const investedCapital = sumNumbers(investments.map((inv) => inv.planAmount));
+      const totalExpenditure = investedCapital || Number(user.expense || 0);
+      const profitEarned = Number(totals.investmentEarnings || 0) + Number(totals.referralEarnings || 0);
+      const netFinancePosition = profitEarned - totalExpenditure;
+
+      return {
+        investedCapital,
+        totalExpenditure,
+        profitEarned,
+        netFinancePosition
+      };
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed request');
+      }
+      return data;
+    }
+
+    function renderTimeline(items) {
+      const list = document.getElementById('timelineList');
+      list.innerHTML = '';
+
+      if (!items.length) {
+        list.innerHTML = '<li class="record-item">No finance activity found.</li>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const li = document.createElement('li');
+        li.className = 'record-item';
+        const status = normalizeTimelineStatus(item.type, item.status);
+
+        let meta = item.note || '';
+        if (item.type === 'withdrawal') {
+          meta = `${item.note || 'Cash withdrawal'} | Tax: ${fmt(item.tax || 0)} | Net: ${fmt(item.net || 0)}`;
+        } else if (item.type === 'recharge') {
+          meta = `${item.note || 'Wallet recharge'} | Status: ${status.toUpperCase()}`;
+        } else if (item.type === 'investment') {
+          meta = `${item.note || 'Investment earnings'} | Status: ${String(item.status || 'active').toUpperCase()}`;
+        } else if (item.type === 'referral') {
+          meta = item.note || 'Referral earnings';
+        }
+
+        li.innerHTML = `
+          <div class="record-row">
+            <strong>${fmt(item.amount)}</strong>
+            ${statusBadge(status === 'active' ? 'active' : status)}
+          </div>
+          <div class="record-meta">${String(item.type || 'record').toUpperCase()}</div>
+          <div class="record-meta">${meta}</div>
+          <div class="record-meta">${safeDate(item.date)}</div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function renderInvestments(investments) {
+      const list = document.getElementById('investmentList');
+      list.innerHTML = '';
+
+      if (!investments.length) {
+        list.innerHTML = '<li class="record-item">No investment progress found.</li>';
+        return;
+      }
+
+      investments.forEach((inv) => {
+        const li = document.createElement('li');
+        li.className = 'record-item';
+        const totalDays = Number(inv.initialDurationDays || inv.durationDays || 1);
+        const dailyPay = totalDays > 0 ? Number(inv.returnAmount || 0) / totalDays : 0;
+        const remainingDays = Number(inv.durationDays || 0);
+        const status = String(inv.status || 'active').toLowerCase();
+
+        li.innerHTML = `
+          <div class="record-row">
+            <strong>${inv.planName || `KES ${Number(inv.planAmount || 0).toFixed(2)}`}</strong>
+            ${statusBadge(status === 'completed' ? 'approved' : 'active')}
+          </div>
+          <div class="record-meta">Invested: ${fmt(inv.planAmount || 0)} | Return: ${fmt(inv.returnAmount || 0)}</div>
+          <div class="record-meta">Daily Earning: ${fmt(dailyPay)} | Remaining Days: ${remainingDays}</div>
+          <div class="record-meta">Started: ${safeDate(inv.startDate || inv.createdAt)} | Ends: ${safeDate(inv.endDate)}</div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function updateSummary() {
+      const user = financeState.user || {};
+      const totals = financeState.history.totals || {};
+      const investments = financeState.investments || [];
+      const activeCount = investments.filter((inv) => String(inv.status || '').toLowerCase() === 'active').length;
+      const metrics = getFinanceMetrics();
+
+      document.getElementById('fWallet').textContent = fmt(user.wallet || 0);
+      document.getElementById('fInvestment').textContent = fmt(totals.investmentEarnings || 0);
+      document.getElementById('fRecharge').textContent = fmt(totals.rechargedCash || 0);
+      document.getElementById('fWithdrawal').textContent = fmt(totals.withdrawnCash || 0);
+      document.getElementById('fReferral').textContent = fmt(totals.referralEarnings || 0);
+      document.getElementById('fExpenditure').textContent = fmt(metrics.totalExpenditure || 0);
+      document.getElementById('fProfit').textContent = fmt(metrics.profitEarned || 0);
+      document.getElementById('fActiveInvestments').textContent = String(activeCount);
+    }
+
+    async function loadFinanceData() {
+      const currentUser = getCurrentUser();
+      if (!currentUser || !currentUser._id) {
+        document.getElementById('financeStatus').textContent = 'Session not found. Please log in again.';
+        return;
+      }
+
+      document.getElementById('financeStatus').textContent = 'Loading records...';
+
+      const [user, history, investmentsRes] = await Promise.all([
+        fetchJson(`${FINANCE_BASE_URL}/api/user/${currentUser._id}`),
+        fetchJson(`${FINANCE_BASE_URL}/api/history/${currentUser._id}`),
+        fetchJson(`${FINANCE_BASE_URL}/api/investments/${currentUser._id}`)
+      ]);
+
+      financeState.user = user;
+      financeState.history = history;
+      financeState.investments = Array.isArray(investmentsRes.investments) ? investmentsRes.investments : [];
+
+      updateSummary();
+      renderTimeline(Array.isArray(history.items) ? history.items : []);
+      renderInvestments(financeState.investments);
+      document.getElementById('financeStatus').textContent = 'Records ready. You can download your PDF now.';
+    }
+
+    function downloadPdf() {
+      if (!window.jspdf || !window.jspdf.jsPDF || typeof window.jspdf.jsPDF.API.autoTable !== 'function') {
+        alert('PDF generator failed to load. Please try again.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const user = financeState.user || {};
+      const totals = financeState.history.totals || {};
+      const items = Array.isArray(financeState.history.items) ? financeState.history.items : [];
+      const investments = financeState.investments || [];
+      const metrics = getFinanceMetrics();
+      const generatedAt = new Date().toLocaleString();
+
+      doc.setFillColor(17, 24, 39);
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), 108, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(22);
+      doc.text('TUST VANILLA', 40, 42);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Finance Progress Report', 40, 64);
+      doc.text(`Generated: ${generatedAt}`, 40, 84);
+
+      doc.setTextColor(31, 41, 55);
+      doc.setFontSize(11);
+      doc.text(`Name: ${user.fullName || 'N/A'}`, 40, 132);
+      doc.text(`Phone: ${user.phone || 'N/A'}`, 40, 150);
+      doc.text(`Email: ${user.email || 'N/A'}`, 40, 168);
+
+      doc.autoTable({
+        startY: 188,
+        theme: 'grid',
+        head: [['Metric', 'Amount']],
+        body: [
+          ['Wallet Balance', fmt(user.wallet || 0)],
+          ['Approved Recharges', fmt(totals.rechargedCash || 0)],
+          ['Approved Withdrawals', fmt(totals.withdrawnCash || 0)],
+          ['Investment Earnings', fmt(totals.investmentEarnings || 0)],
+          ['Referral Earnings', fmt(totals.referralEarnings || 0)],
+          ['Total Expenditure', fmt(metrics.totalExpenditure || 0)],
+          ['Profit Earned', fmt(metrics.profitEarned || 0)],
+          ['Net Finance Position', fmt(metrics.netFinancePosition || 0)]
+        ],
+        styles: {
+          fontSize: 10,
+          cellPadding: 8,
+          lineColor: [209, 213, 219],
+          lineWidth: 0.6,
+          textColor: [31, 41, 55]
+        },
+        headStyles: {
+          fillColor: [15, 118, 110],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        columnStyles: {
+          0: { cellWidth: 230 },
+          1: { halign: 'right' }
+        }
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 18,
+        theme: 'grid',
+        head: [['Record', 'Value']],
+        body: [
+          ['Active Investments', String(investments.filter((inv) => String(inv.status || '').toLowerCase() === 'active').length)],
+          ['Total Investment Capital', fmt(metrics.investedCapital || 0)],
+          ['Current Wallet + Profit', fmt(Number(user.wallet || 0) + Number(metrics.profitEarned || 0))]
+        ],
+        styles: {
+          fontSize: 10,
+          cellPadding: 8,
+          lineColor: [226, 232, 240],
+          lineWidth: 0.5
+        },
+        headStyles: {
+          fillColor: [30, 64, 175],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [239, 246, 255]
+        },
+        columnStyles: {
+          1: { halign: 'right' }
+        }
+      });
+
+      const activityRows = items.slice(0, 40).map((item) => {
+        const status = normalizeTimelineStatus(item.type, item.status).toUpperCase();
+        const detail = item.type === 'withdrawal'
+          ? `Tax ${fmt(item.tax || 0)} | Net ${fmt(item.net || 0)}`
+          : item.note || '-';
+
+        return [
+          String(item.type || 'record').toUpperCase(),
+          fmt(item.amount || 0),
+          status,
+          detail,
+          safeDate(item.date)
+        ];
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 18,
+        theme: 'striped',
+        head: [['Type', 'Amount', 'Status', 'Details', 'Date']],
+        body: activityRows.length ? activityRows : [['-', '-', '-', 'No activity records found', '-']],
+        styles: {
+          fontSize: 9,
+          cellPadding: 6,
+          overflow: 'linebreak',
+          textColor: [31, 41, 55]
+        },
+        headStyles: {
+          fillColor: [17, 24, 39],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        columnStyles: {
+          1: { halign: 'right', cellWidth: 72 },
+          2: { halign: 'center', cellWidth: 56 },
+          3: { cellWidth: 150 },
+          4: { cellWidth: 120 }
+        },
+        margin: { left: 30, right: 30 }
+      });
+
+      const investmentRows = investments.slice(0, 25).map((inv) => {
+        const totalDays = Number(inv.initialDurationDays || inv.durationDays || 1);
+        const dailyPay = totalDays > 0 ? Number(inv.returnAmount || 0) / totalDays : 0;
+
+        return [
+          inv.planName || `KES ${Number(inv.planAmount || 0).toFixed(2)}`,
+          fmt(inv.planAmount || 0),
+          fmt(inv.returnAmount || 0),
+          fmt(dailyPay),
+          String(inv.status || 'active').toUpperCase(),
+          safeDate(inv.endDate)
+        ];
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 18,
+        theme: 'grid',
+        head: [['Plan', 'Invested', 'Expected Return', 'Daily Earning', 'Status', 'End Date']],
+        body: investmentRows.length ? investmentRows : [['-', '-', '-', '-', 'NO RECORDS', '-']],
+        styles: {
+          fontSize: 9,
+          cellPadding: 6,
+          overflow: 'linebreak'
+        },
+        headStyles: {
+          fillColor: [22, 101, 52],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [240, 253, 244]
+        },
+        columnStyles: {
+          1: { halign: 'right' },
+          2: { halign: 'right' },
+          3: { halign: 'right' },
+          4: { halign: 'center' },
+          5: { cellWidth: 110 }
+        },
+        margin: { left: 30, right: 30 }
+      });
+
+      const pageCount = doc.getNumberOfPages();
+      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+        doc.setPage(pageNumber);
+        doc.setFontSize(9);
+        doc.setTextColor(107, 114, 128);
+        doc.text(`Page ${pageNumber} of ${pageCount}`, doc.internal.pageSize.getWidth() - 90, doc.internal.pageSize.getHeight() - 18);
+      }
+
+      doc.save(`tust-vanilla-finance-records-${Date.now()}.pdf`);
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const downloadButton = document.getElementById('downloadPdfBtn');
+      downloadButton.addEventListener('click', downloadPdf);
+
+      try {
+        await loadFinanceData();
+      } catch (error) {
+        document.getElementById('financeStatus').textContent = `Failed to load finance records. ${String(error.message || '')}`;
+        document.getElementById('timelineList').innerHTML = '<li class="record-item">Failed to load activity timeline.</li>';
+        document.getElementById('investmentList').innerHTML = '<li class="record-item">Failed to load investment progress.</li>';
+      }
+    });
+  </script>
+  <script src="nav.js"></script>
+</body>
+</html>

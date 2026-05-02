@@ -35,6 +35,19 @@
       color: var(--primary);
       font-size: 1rem;
     }
+    .pill {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 4px 8px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .pill.investment { background: #dbeafe; color: #1e40af; }
+    .pill.recharge { background: #dcfce7; color: #166534; }
+    .pill.withdrawal { background: #fee2e2; color: #991b1b; }
+    .pill.referral { background: #ede9fe; color: #5b21b6; }
     .status-chip {
       display: inline-block;
       padding: 4px 9px;
@@ -112,6 +125,15 @@
       <div class="history-total"><small>Total Withdrawn (Approved)</small><strong id="tWithdraw">KES 0.00</strong></div>
       <div class="history-total"><small>Pending Recharges</small><strong id="countRechargePending">0</strong></div>
       <div class="history-total"><small>Pending Withdrawals</small><strong id="countWithdrawalPending">0</strong></div>
+      <div class="history-total"><small>Investment Earnings</small><strong id="tInvestment">KES 0.00</strong></div>
+      <div class="history-total"><small>Referral Earnings</small><strong id="tReferral">KES 0.00</strong></div>
+    </div>
+
+    <div class="card" style="margin-bottom:0.9rem;">
+      <div class="section-title">Activity Timeline</div>
+      <ul id="activityTimelineList" class="history-list">
+        <li class="history-item">Loading activity timeline...</li>
+      </ul>
     </div>
 
     <div class="card">
@@ -133,15 +155,12 @@
     </div>
   </div>
 
-  <script src="auth.js"></script>
   <script>
-    const BASE_URL = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(window.location.hostname)
+    const HISTORY_BASE_URL = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(window.location.hostname)
       ? window.location.origin
       : 'https://investmentplatform.onrender.com';
-    let historyPollTimer = null;
-    const CACHE_RECHARGES_KEY = "tv_recharge_history";
-    const CACHE_WITHDRAWALS_KEY = "tv_withdraw_history";
     const LOCAL_STORAGE_KEY = "tc_user";
+    let historyPollTimer = null;
 
     function fmt(value) {
       return `KES ${Number(value || 0).toFixed(2)}`;
@@ -209,6 +228,45 @@
       return li;
     }
 
+    function normalizeTimelineStatus(type, status) {
+      const normalized = String(status || "").toLowerCase();
+      if (type === "recharge" && normalized === "confirmed") return "approved";
+      if (type === "withdrawal" && normalized === "paid") return "approved";
+      if (normalized === "approved" || normalized === "rejected" || normalized === "pending") return normalized;
+      return normalized || "active";
+    }
+
+    function renderTimelineItem(item) {
+      const li = document.createElement("li");
+      li.className = "history-item";
+      const timelineStatus = normalizeTimelineStatus(item.type, item.status);
+
+      let meta = item.note || "";
+      if (item.type === "withdrawal") {
+        meta = `${item.note || "Cash withdrawal"} | Tax: ${fmt(item.tax || 0)} | Net: ${fmt(item.net || 0)}`;
+      }
+      if (item.type === "recharge") {
+        meta = `${item.note || "Wallet recharge"} | Status: ${timelineStatus.toUpperCase()}`;
+      }
+      if (item.type === "investment") {
+        meta = `${item.note || "Investment earnings"} | Status: ${String(item.status || "active").toUpperCase()}`;
+      }
+      if (item.type === "referral") {
+        meta = item.note || "Referral earnings";
+      }
+
+      li.innerHTML = `
+        <span class="pill ${item.type}">${item.type}</span>
+        <div class="history-row">
+          <strong>${fmt(item.amount)}</strong>
+          ${statusBadge(timelineStatus === "active" ? "approved" : timelineStatus)}
+        </div>
+        <div class="history-meta">${meta}</div>
+        <div class="history-meta">${safeDate(item.date)}</div>
+      `;
+      return li;
+    }
+
     async function fetchJsonWithTimeout(url) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -224,31 +282,7 @@
       }
     }
 
-    function getCachedArray(key) {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(key) || "[]");
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (_) {
-        return [];
-      }
-    }
-
-    function setCachedArray(key, data) {
-      try {
-        localStorage.setItem(key, JSON.stringify(Array.isArray(data) ? data : []));
-      } catch (_) {
-        // Ignore cache write failures.
-      }
-    }
-
     function resolveCurrentUser() {
-      if (typeof getCurrentUser === "function") {
-        const user = getCurrentUser();
-        if (user && user._id) {
-          return user;
-        }
-      }
-
       try {
         const fallback = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "null");
         if (fallback && fallback._id) {
@@ -307,26 +341,18 @@
       rechargeList.innerHTML = '<li class="history-item">Loading recharge history...</li>';
       withdrawalList.innerHTML = '<li class="history-item">Loading withdrawal history...</li>';
 
-      const cachedRecharges = getCachedArray(CACHE_RECHARGES_KEY);
-      const cachedWithdrawals = getCachedArray(CACHE_WITHDRAWALS_KEY);
-      if (cachedRecharges.length || cachedWithdrawals.length) {
-        renderListsAndTotals(cachedRecharges, cachedWithdrawals);
-      }
-
       const [rechargeResult, withdrawalResult] = await Promise.allSettled([
-        fetchJsonWithTimeout(`${BASE_URL}/api/recharges/${userId}`),
-        fetchJsonWithTimeout(`${BASE_URL}/api/withdrawals/${userId}`)
+        fetchJsonWithTimeout(`${HISTORY_BASE_URL}/api/recharges/${userId}`),
+        fetchJsonWithTimeout(`${HISTORY_BASE_URL}/api/withdrawals/${userId}`)
       ]);
 
       const rechargeArray = rechargeResult.status === "fulfilled" && Array.isArray(rechargeResult.value)
         ? rechargeResult.value
-        : cachedRecharges;
+        : [];
       const withdrawalArray = withdrawalResult.status === "fulfilled" && Array.isArray(withdrawalResult.value)
         ? withdrawalResult.value
-        : cachedWithdrawals;
+        : [];
 
-      setCachedArray(CACHE_RECHARGES_KEY, rechargeArray);
-      setCachedArray(CACHE_WITHDRAWALS_KEY, withdrawalArray);
       renderListsAndTotals(rechargeArray, withdrawalArray);
 
       if (rechargeResult.status === "rejected" && withdrawalResult.status === "rejected") {
@@ -334,18 +360,27 @@
       }
     }
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      if (typeof protectPage === "function") {
-        try {
-          await Promise.race([
-            protectPage(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Session check timeout")), 8000))
-          ]);
-        } catch (_) {
-          // Do not block page rendering if session refresh hangs.
-        }
+    async function loadActivityTimeline(userId) {
+      const timelineList = document.getElementById("activityTimelineList");
+      timelineList.innerHTML = '<li class="history-item">Loading activity timeline...</li>';
+
+      const data = await fetchJsonWithTimeout(`${HISTORY_BASE_URL}/api/history/${userId}`);
+      const totals = data && data.totals ? data.totals : {};
+      const items = Array.isArray(data && data.items) ? data.items : [];
+
+      document.getElementById("tInvestment").textContent = fmt(totals.investmentEarnings || 0);
+      document.getElementById("tReferral").textContent = fmt(totals.referralEarnings || 0);
+
+      timelineList.innerHTML = "";
+      if (!items.length) {
+        timelineList.innerHTML = '<li class="history-item">No activity timeline found.</li>';
+        return;
       }
 
+      items.forEach((item) => timelineList.appendChild(renderTimelineItem(item)));
+    }
+
+    async function initHistoryPage() {
       const user = resolveCurrentUser();
       if (!user || !user._id) {
         document.getElementById("rechargeList").innerHTML = '<li class="history-item">Session not found. Please log in again.</li>';
@@ -369,15 +404,22 @@
       });
 
       try {
-        await loadTransactionHistory(user._id);
+        await Promise.all([
+          loadTransactionHistory(user._id),
+          loadActivityTimeline(user._id)
+        ]);
       } catch (err) {
         document.getElementById("rechargeList").innerHTML = `<li class="history-item">Failed to load recharge history. ${String(err.message || "")}</li>`;
         document.getElementById("withdrawalList").innerHTML = `<li class="history-item">Failed to load withdrawal history. ${String(err.message || "")}</li>`;
+        document.getElementById("activityTimelineList").innerHTML = `<li class="history-item">Failed to load activity timeline. ${String(err.message || "")}</li>`;
       }
 
       historyPollTimer = setInterval(async () => {
         try {
-          await loadTransactionHistory(user._id);
+          await Promise.all([
+            loadTransactionHistory(user._id),
+            loadActivityTimeline(user._id)
+          ]);
         } catch (_) {
           // Silent retry on next cycle.
         }
@@ -388,7 +430,13 @@
           clearInterval(historyPollTimer);
         }
       });
-    });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initHistoryPage, { once: true });
+    } else {
+      initHistoryPage();
+    }
   </script>
   <script src="nav.js"></script>
 </body>
