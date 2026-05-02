@@ -194,6 +194,90 @@ app.get("/api/withdrawals/:userId", async (req, res) => {
   }
 });
 
+async function getUnifiedHistoryPayload(userId) {
+  const user = await User.findById(userId);
+  if (!user) {
+    return { notFound: true };
+  }
+
+  const [investments, recharges, withdrawals] = await Promise.all([
+    Investment.find({ uid: userId }).sort({ createdAt: -1 }),
+    Recharge.find({ uid: userId }).sort({ createdAt: -1 }),
+    Withdrawal.find({ uid: userId }).sort({ createdAt: -1 })
+  ]);
+
+  const referralItems = (user.referrals || []).map((ref) => {
+    const rate = ref.level === 1 ? 0.2 : 0.01;
+    return {
+      type: 'referral',
+      amount: Number((ref.amount || 0) * rate),
+      rawAmount: ref.amount || 0,
+      level: ref.level || 0,
+      note: `Referral level ${ref.level || 0} (${rate * 100}%)`,
+      date: ref.date || user.createdAt
+    };
+  });
+
+  const investmentItems = investments.map((inv) => ({
+    type: 'investment',
+    amount: inv.returnAmount || 0,
+    note: `${inv.planName || 'Investment'} earnings`,
+    status: inv.status,
+    date: inv.createdAt
+  }));
+
+  const rechargeItems = recharges.map((rec) => ({
+    type: 'recharge',
+    amount: rec.amount || 0,
+    note: 'Wallet recharge',
+    status: rec.status,
+    date: rec.createdAt
+  }));
+
+  const withdrawalItems = withdrawals.map((wd) => ({
+    type: 'withdrawal',
+    amount: wd.amount || 0,
+    tax: wd.tax || 0,
+    net: wd.net || 0,
+    status: wd.status,
+    note: 'Cash withdrawal',
+    date: wd.createdAt
+  }));
+
+  const items = [...investmentItems, ...rechargeItems, ...withdrawalItems, ...referralItems]
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const totals = {
+    investmentEarnings: investmentItems.reduce((sum, i) => sum + (i.amount || 0), 0),
+    rechargedCash: rechargeItems
+      .filter((i) => i.status === 'confirmed')
+      .reduce((sum, i) => sum + (i.amount || 0), 0),
+    withdrawnCash: withdrawalItems.reduce((sum, i) => sum + (i.amount || 0), 0),
+    referralEarnings: referralItems.reduce((sum, i) => sum + (i.amount || 0), 0)
+  };
+
+  return { notFound: false, items, totals };
+}
+
+app.get('/api/history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user id' });
+    }
+
+    const payload = await getUnifiedHistoryPayload(userId);
+    if (payload.notFound) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, totals: payload.totals, items: payload.items });
+  } catch (err) {
+    console.error('History fetch error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch history' });
+  }
+});
+
     // Ivestment
 app.post('/api/invest', async (req, res) => {
   try {
@@ -427,82 +511,6 @@ app.get('/api/referrals/:userId', async (req, res) => {
   } catch (err) {
     console.error("Referral fetch error:", err);
     res.status(500).json({ error: "Server error" });
-  }
-});
-
-// Unified user financial history
-app.get('/api/history/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    if (!isValidObjectId(userId)) {
-      return res.status(400).json({ success: false, message: 'Invalid user id' });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    const [investments, recharges, withdrawals] = await Promise.all([
-      Investment.find({ uid: userId }).sort({ createdAt: -1 }),
-      Recharge.find({ uid: userId }).sort({ createdAt: -1 }),
-      Withdrawal.find({ uid: userId }).sort({ createdAt: -1 })
-    ]);
-
-    const referralItems = (user.referrals || []).map((ref) => {
-      const rate = ref.level === 1 ? 0.2 : 0.01;
-      return {
-        type: 'referral',
-        amount: Number((ref.amount || 0) * rate),
-        rawAmount: ref.amount || 0,
-        level: ref.level || 0,
-        note: `Referral level ${ref.level || 0} (${rate * 100}%)`,
-        date: ref.date || user.createdAt
-      };
-    });
-
-    const investmentItems = investments.map((inv) => ({
-      type: 'investment',
-      amount: inv.returnAmount || 0,
-      note: `${inv.planName || 'Investment'} earnings`,
-      status: inv.status,
-      date: inv.createdAt
-    }));
-
-    const rechargeItems = recharges.map((rec) => ({
-      type: 'recharge',
-      amount: rec.amount || 0,
-      note: 'Wallet recharge',
-      status: rec.status,
-      date: rec.createdAt
-    }));
-
-    const withdrawalItems = withdrawals.map((wd) => ({
-      type: 'withdrawal',
-      amount: wd.amount || 0,
-      tax: wd.tax || 0,
-      net: wd.net || 0,
-      status: wd.status,
-      note: 'Cash withdrawal',
-      date: wd.createdAt
-    }));
-
-    const items = [...investmentItems, ...rechargeItems, ...withdrawalItems, ...referralItems]
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    const totals = {
-      investmentEarnings: investmentItems.reduce((sum, i) => sum + (i.amount || 0), 0),
-      rechargedCash: rechargeItems
-        .filter((i) => i.status === 'confirmed')
-        .reduce((sum, i) => sum + (i.amount || 0), 0),
-      withdrawnCash: withdrawalItems.reduce((sum, i) => sum + (i.amount || 0), 0),
-      referralEarnings: referralItems.reduce((sum, i) => sum + (i.amount || 0), 0)
-    };
-
-    res.json({ success: true, totals, items });
-  } catch (err) {
-    console.error('History fetch error:', err);
-    res.status(500).json({ success: false, message: 'Failed to fetch history' });
   }
 });
 

@@ -6,9 +6,10 @@ const User = require('../models/User');
 // POST /api/withdraw
 router.post('/', async (req, res) => {
   try {
-    const { uid, name, phone, amount } = req.body;
+    const { uid, name, phone } = req.body;
+    const amount = Number(req.body.amount);
 
-    if (!uid || !amount || amount < 150) {
+    if (!uid || Number.isNaN(amount) || amount < 150) {
       return res.status(400).json({ message: "Minimum withdrawal amount is Ksh 150." });
     }
 
@@ -16,7 +17,7 @@ router.post('/', async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // 💡 Restrict withdrawal to non-deposit earnings
-    const allowedWithdrawal = user.wallet - user.expense;
+    const allowedWithdrawal = Number(user.wallet || 0) - Number(user.expense || 0);
     if (allowedWithdrawal < amount) {
       return res.status(400).json({
         message: "You can only withdraw from your earnings (not deposited capital)."
@@ -41,8 +42,8 @@ router.post('/', async (req, res) => {
     await withdrawal.save();
 
     // Deduct from wallet
-    user.wallet -= amount;
-    user.cashouts += amount;
+    user.wallet = Number(user.wallet || 0) - amount;
+    user.cashouts = Number(user.cashouts || 0) + amount;
     await user.save();
 
     res.status(201).json({
@@ -50,6 +51,8 @@ router.post('/', async (req, res) => {
       message: "Withdrawal request submitted",
       tax,
       net,
+      newWallet: user.wallet,
+      newCashouts: user.cashouts,
       withdrawal
     });
   } catch (err) {

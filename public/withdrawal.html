@@ -252,6 +252,9 @@
             withdrawForm.reset();
             document.getElementById("taxPreview").textContent = "";
             await fetchUserData();
+            if (typeof storeUserLocally === "function" && userData?._id) {
+              storeUserLocally(userData);
+            }
             await loadHistory();
           } else {
             withdrawMessage.textContent = data.message || "Withdrawal failed.";
