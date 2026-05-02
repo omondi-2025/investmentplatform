@@ -5,6 +5,11 @@ const User = require('../models/User');
 const payoutJob = () => {
   cron.schedule('*/10 * * * *', async () => {
     try {
+      if (User.db.readyState !== 1) {
+        console.warn('Skipping investment payout check: MongoDB is disconnected.');
+        return;
+      }
+
       console.log("⏰ Running investment payout check...");
       const now = new Date();
       const investments = await Investment.find({ status: 'active' });
@@ -15,7 +20,12 @@ const payoutJob = () => {
 
         if (now >= nextDue && inv.durationDays > 0) {
           const user = await User.findById(inv.uid);
-          const dailyPay = inv.returnAmount / inv.durationDays;
+          if (!user) {
+            continue;
+          }
+
+          const totalDays = inv.initialDurationDays || inv.durationDays;
+          const dailyPay = inv.returnAmount / totalDays;
 
           user.wallet += dailyPay;
           await user.save();

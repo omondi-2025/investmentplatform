@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Referral History - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Referral History - TUST VANILLA</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -43,9 +43,9 @@
       margin: 4px 0;
     }
   </style>
-</head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" /></head>
 <body>
-  <h2>📢 Referral History</h2>
+  <h2> Referral History</h2>
 
   <div class="referral-section">
     <h3 class="level-title">Level 1 Referrals</h3>
@@ -58,7 +58,9 @@
   </div>
 
   <script>
-const BASE_URL = "https://investmentplatform.onrender.com";
+const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? window.location.origin
+  : "https://investmentplatform.onrender.com";
 const currentUser = JSON.parse(localStorage.getItem("tc_user"));
 
 if (!currentUser || !currentUser.referralCode) {
@@ -117,11 +119,13 @@ async function fetchReferrals() {
     console.error(err);
     document.getElementById("level1List").innerHTML = "<p>Unable to load referrals.</p>";
     document.getElementById("level2List").innerHTML = "<p>Unable to load referrals.</p>";
-    alert("⚠️ Error loading referral data.");
+    alert(" Error loading referral data.");
   }
 }
 
 fetchReferrals();
 </script>
-</body>
+  <script src="nav.js"></script></body>
 </html>
+
+

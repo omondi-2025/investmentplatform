@@ -1,56 +1,122 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Dashboard – Recharges</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>TUST VANILLA Admin Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 <body>
   <header>
-    <h1>Admin Dashboard – Recharges</h1>
+    <h1>TUST VANILLA Admin</h1>
   </header>
 
   <div class="container">
-    <div id="adminMessage" class="alert"></div>
+    <div id="adminLoginCard" class="card" style="max-width:420px;margin:1rem auto;">
+      <h2 style="margin-bottom:0.75rem;">Admin Login</h2>
+      <div class="form-group">
+        <label for="adminUsername">Username</label>
+        <input id="adminUsername" type="text" placeholder="Enter admin username" />
+      </div>
+      <div class="form-group">
+        <label for="adminPassword">Password</label>
+        <input id="adminPassword" type="password" placeholder="Enter admin password" />
+      </div>
+      <button id="adminLoginBtn" class="btn-primary">Login</button>
+      <div id="adminMessage" class="alert" style="display:none;"></div>
+    </div>
 
-    <h2>Pending Recharges</h2>
-    <div id="rechargeList" class="recharge-list">
-      <p>Loading recharge requests...</p>
+    <div id="adminPanel" style="display:none;">
+      <h2 style="margin-bottom:0.75rem;">Pending Recharges</h2>
+      <div id="rechargeList" class="recharge-list">
+        <p>Loading recharge requests...</p>
+      </div>
     </div>
   </div>
 
   <script>
-    const apiUrl = 'http://localhost:3000';
-    const adminEmails = ['admin@trustcode.com'];
+    const apiUrl = window.location.hostname === 'localhost'
+      ? window.location.origin
+      : 'https://investmentplatform.onrender.com';
+
+    function getAdminToken() {
+      return localStorage.getItem('tv_admin_token') || '';
+    }
+
+    function showMessage(text, isError = false) {
+      const msg = document.getElementById('adminMessage');
+      msg.style.display = 'block';
+      msg.textContent = text;
+      msg.className = isError ? 'alert error' : 'alert success';
+    }
+
+    async function adminLogin() {
+      const username = document.getElementById('adminUsername').value.trim();
+      const password = document.getElementById('adminPassword').value;
+
+      if (!username || !password) {
+        showMessage('Username and password are required.', true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.token) {
+          showMessage(data.message || 'Invalid credentials.', true);
+          return;
+        }
+
+        localStorage.setItem('tv_admin_token', data.token);
+        document.getElementById('adminLoginCard').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        await loadRecharges();
+      } catch (err) {
+        showMessage('Failed to connect to server.', true);
+      }
+    }
 
     async function fetchPendingRecharges() {
-      const res = await fetch(`${apiUrl}/api/admin/recharges/pending`);
+      const res = await fetch(`${apiUrl}/api/admin/recharges/pending`, {
+        headers: { 'x-admin-token': getAdminToken() }
+      });
+      if (res.status === 401) {
+        throw new Error('unauthorized');
+      }
       return await res.json();
     }
 
     async function approveRecharge(id, uid, amount) {
-      const confirmAction = confirm("✅ Approve this recharge?");
+      const confirmAction = confirm("Approve this recharge?");
       if (!confirmAction) return;
 
       const res = await fetch(`${apiUrl}/api/admin/recharge/${id}/approve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-token': getAdminToken()
+        },
         body: JSON.stringify({ uid, amount })
       });
 
-      if (res.ok) location.reload();
+      if (res.ok) loadRecharges();
     }
 
     async function rejectRecharge(id) {
-      const confirmAction = confirm("❌ Reject this recharge?");
+      const confirmAction = confirm("Reject this recharge?");
       if (!confirmAction) return;
 
       const res = await fetch(`${apiUrl}/api/admin/recharge/${id}/reject`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'x-admin-token': getAdminToken() }
       });
 
-      if (res.ok) location.reload();
+      if (res.ok) loadRecharges();
     }
 
     function renderRechargeCard(recharge) {
@@ -74,17 +140,9 @@
       document.getElementById("rechargeList").appendChild(card);
     }
 
-    async function init() {
-      const currentUser = JSON.parse(localStorage.getItem("tc_user"));
-      const messageBox = document.getElementById("adminMessage");
+    async function loadRecharges() {
       const listBox = document.getElementById("rechargeList");
-
-      if (!currentUser || !adminEmails.includes(currentUser.email)) {
-        messageBox.textContent = "❌ You are not authorized to access this page.";
-        messageBox.className = "alert error";
-        listBox.innerHTML = "";
-        return;
-      }
+      listBox.innerHTML = "<p>Loading recharge requests...</p>";
 
       try {
         const recharges = await fetchPendingRecharges();
@@ -96,12 +154,28 @@
           recharges.forEach(renderRechargeCard);
         }
       } catch (err) {
-        messageBox.textContent = "❌ Failed to load recharge records.";
-        messageBox.className = "alert error";
+        if (String(err.message).includes('unauthorized')) {
+          localStorage.removeItem('tv_admin_token');
+          document.getElementById('adminPanel').style.display = 'none';
+          document.getElementById('adminLoginCard').style.display = 'block';
+          showMessage('Session expired. Please log in again.', true);
+        } else {
+          showMessage('Failed to load recharge records.', true);
+        }
       }
     }
 
-    window.onload = init;
+    document.getElementById('adminLoginBtn').addEventListener('click', adminLogin);
+    window.onload = async () => {
+      if (getAdminToken()) {
+        document.getElementById('adminLoginCard').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        await loadRecharges();
+      }
+    };
   </script>
+  <script src="nav.js"></script>
 </body>
 </html>
+
+

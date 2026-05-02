@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Recharge Wallet - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Recharge Wallet - TUST VANILLA</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
     body {
@@ -95,12 +95,12 @@
   }
 }
   </style>
-</head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" /></head>
 <body>
 
   <div class="container">
     <h1>Recharge Wallet</h1>
-    <a href="index.html">← Go to Dashboard</a>
+    <a href="index.html"> Go to Dashboard</a>
 
     <div class="instructions">
       <strong>To recharge your wallet:</strong>
@@ -126,7 +126,9 @@
     </form>
   </div>
   <script>
- const BASE_URL = "https://investmentplatform.onrender.com";
+ const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+   ? window.location.origin
+   : "https://investmentplatform.onrender.com";
 const mpesaNumbers = ["0102188852"];
   const currentNumber = mpesaNumbers[Math.floor(Date.now() / (15 * 60 * 1000)) % mpesaNumbers.length];
 
@@ -137,7 +139,7 @@ const mpesaNumbers = ["0102188852"];
   function copyNumber() {
     const number = document.getElementById("mpesaNumber").textContent;
     navigator.clipboard.writeText(number).then(() => {
-      alert("✅ M-Pesa number copied!");
+      alert(" M-Pesa number copied!");
     });
   }
 
@@ -159,7 +161,7 @@ const mpesaNumbers = ["0102188852"];
   rechargeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     submitBtn.disabled = true;
-    submitBtn.textContent = "⏳ Submitting...";
+    submitBtn.textContent = " Submitting...";
     rechargeMessage.textContent = "";
     rechargeMessage.className = "";
 
@@ -170,7 +172,7 @@ const mpesaNumbers = ["0102188852"];
     const transactionCodeMatch = message.match(/^[A-Z0-9]{10}/);
 
     if (!confirmationMatch || !amountMatch || !matchedNumber || !transactionCodeMatch) {
-      rechargeMessage.textContent = "❌ Invalid or incomplete M-Pesa message.";
+      rechargeMessage.textContent = " Invalid or incomplete M-Pesa message.";
       rechargeMessage.classList.add("error");
       submitBtn.disabled = false;
       submitBtn.textContent = "Submit";
@@ -179,7 +181,7 @@ const mpesaNumbers = ["0102188852"];
 
     const amount = parseFloat(amountMatch[1].replace(",", ""));
     if (amount < 200) {
-      rechargeMessage.textContent = "❌ Minimum deposit is KES 200.";
+      rechargeMessage.textContent = " Minimum deposit is KES 200.";
       rechargeMessage.classList.add("error");
       submitBtn.disabled = false;
       submitBtn.textContent = "Submit";
@@ -204,18 +206,16 @@ const mpesaNumbers = ["0102188852"];
       const data = await res.json();
 
       if (res.ok) {
-        user.wallet = data.newWallet;
-        localStorage.setItem("tc_user", JSON.stringify(user));
-        rechargeMessage.textContent = `✅ KES ${amount.toFixed(2)} added to your wallet.`;
+        rechargeMessage.textContent = ` KES ${amount.toFixed(2)} submitted. Wallet balance will update after admin approval.`;
         rechargeMessage.classList.add("success");
         rechargeForm.reset();
       } else {
-        rechargeMessage.textContent = `❌ ${data.error}`;
+        rechargeMessage.textContent = ` ${data.error}`;
         rechargeMessage.classList.add("error");
       }
     } catch (err) {
       console.error("Recharge failed:", err);
-      rechargeMessage.textContent = "❌ Server error. Try again.";
+      rechargeMessage.textContent = " Server error. Try again.";
       rechargeMessage.classList.add("error");
     } finally {
       submitBtn.disabled = false;
@@ -224,5 +224,7 @@ const mpesaNumbers = ["0102188852"];
   });
 </script>
 
-</body>
+  <script src="nav.js"></script></body>
 </html>
+
+

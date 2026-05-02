@@ -1,6 +1,8 @@
 // auth.js – Trustcode Auth System (MongoDB Version)
 const LOCAL_STORAGE_KEY = "tc_user";
-const BASE_URL = "https://investmentplatform.onrender.com"; // ✅ Render backend
+const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? window.location.origin
+  : "https://investmentplatform.onrender.com";
 
 // 1. Store user locally
 function storeUserLocally(userData) {

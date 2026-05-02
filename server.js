@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-const cron = require('node-cron');
+const bcrypt = require('bcryptjs');
 
 dotenv.config();
 const app = express();
@@ -16,17 +16,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 10000,
-  ssl: true
-})
-.then(() => console.log("✅ MongoDB connected successfully"))
-.catch(err => {
-  console.error("❌ MongoDB connection error:", err);
-  process.exit(1);
-});
+async function connectToDatabase() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      ssl: true
+    });
+    console.log("✅ MongoDB connected successfully");
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1);
+  }
+}
 
 // Models
 const User = require('./models/User');
@@ -34,6 +35,7 @@ const Recharge = require('./models/Recharge'); // ✅ Make sure this file exists
 const Investment = require('./models/Investment');
 const payoutJob = require('./cron/investmentPayout');
 payoutJob(); // Start cron job
+const adminRoutes = require('./routes/admin');
 
 // Default Route
 app.get('/', (req, res) => {
@@ -44,10 +46,56 @@ function generateReferralCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function isValidObjectId(value) {
+  return mongoose.isValidObjectId(value);
+}
+
+function sanitizeUser(user) {
+  const userObject = user.toObject ? user.toObject() : { ...user };
+  delete userObject.password;
+  return userObject;
+}
+
+function isPasswordHash(password) {
+  return typeof password === 'string' && /^\$2[aby]\$\d{2}\$/.test(password);
+}
+
+async function hashPassword(password) {
+  return bcrypt.hash(password, 10);
+}
+
+async function verifyPassword(user, candidatePassword) {
+  if (isPasswordHash(user.password)) {
+    return bcrypt.compare(candidatePassword, user.password);
+  }
+
+  if (user.password !== candidatePassword) {
+    return false;
+  }
+
+  user.password = await hashPassword(candidatePassword);
+  await user.save();
+  return true;
+}
+
+async function createReferralCode() {
+  let referralCode = generateReferralCode();
+
+  while (await User.findOne({ referralCode })) {
+    referralCode = generateReferralCode();
+  }
+
+  return referralCode;
+}
+
 // Auth: Login
 app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required" });
+    }
+
     const lowerEmail = email.toLowerCase();
 
     const user = await User.findOne({ email: lowerEmail });
@@ -55,11 +103,12 @@ app.post("/api/login", async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
-    if (user.password !== password) {
+    const validPassword = await verifyPassword(user, password);
+    if (!validPassword) {
       return res.status(401).json({ success: false, message: "Invalid password" });
     }
 
-    res.json({ success: true, user });
+    res.json({ success: true, user: sanitizeUser(user) });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -69,7 +118,11 @@ app.post("/api/login", async (req, res) => {
 // Auth: Signup
 app.post("/api/signup", async (req, res) => {
   try {
-    const { fullName, phone, email, password, refCode } = req.body;
+    const { fullName, phone, email, password, refCode, referredBy } = req.body;
+    if (!fullName || !phone || !email || !password) {
+      return res.status(400).json({ success: false, message: "All required fields must be filled" });
+    }
+
     const lowerEmail = email.toLowerCase();
 
     // Check if user exists
@@ -79,27 +132,28 @@ app.post("/api/signup", async (req, res) => {
     }
 
     // Generate referral code for the new user
-    const referralCode = generateReferralCode();
+    const referralCode = await createReferralCode();
 
     // Handle the referrer (referredBy)
-	let referredBy = null; // 👈 Add this line before the `if (refCode)` block
-    if (refCode) {
-  const refUser = await User.findOne({ referralCode: refCode });
-  if (refUser) {
-    referredBy = refUser.referralCode;
-  } else {
-    return res.status(400).json({ success: false, message: "Invalid referral code" });
-  }
-}
+    const suppliedRefCode = (refCode || referredBy || '').trim().toUpperCase();
+    let resolvedReferrer = null;
+    if (suppliedRefCode) {
+      const refUser = await User.findOne({ referralCode: suppliedRefCode });
+      if (refUser) {
+        resolvedReferrer = refUser.referralCode;
+      } else {
+        return res.status(400).json({ success: false, message: "Invalid referral code" });
+      }
+    }
 
     // Create new user with referral code
     const user = new User({
       fullName,
       phone,
       email: lowerEmail,
-      password,
+      password: await hashPassword(password),
       referralCode,
-      referredBy,
+      referredBy: resolvedReferrer,
       wallet: 0,
       cashouts: 0,
       expense: 0,
@@ -108,7 +162,7 @@ app.post("/api/signup", async (req, res) => {
 
     await user.save();
 
-    res.status(201).json({ success: true, message: "User registered", user });
+    res.status(201).json({ success: true, message: "User registered", user: sanitizeUser(user) });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ success: false, message: "Signup failed" });
@@ -122,11 +176,16 @@ const withdrawalRoutes = require('./routes/withdraw');
 
 // Routes
 app.use('/api/withdraw', withdrawalRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ✅ GET: Withdrawal history
 app.get("/api/withdrawals/:userId", async (req, res) => {
   try {
     const userId = req.params.userId;
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
     const history = await Withdrawal.find({ uid: userId }).sort({ createdAt: -1 });
     res.json(history);
   } catch (err) {
@@ -176,6 +235,7 @@ await user.save();
   planName,
   planAmount: amount,
   durationDays: duration,
+  initialDurationDays: duration,
   returnAmount: returns,
   startDate,
   endDate,
@@ -257,14 +317,14 @@ if (isNaN(validAmount) || validAmount <= 0) {
       amount: validAmount,
       number,
       transactionCode,
-      status: "confirmed"
+      status: "pending"
     });
 
-    // Update wallet
-    user.wallet += amount;
-    await user.save();
-
-    return res.status(200).json({ message: "Recharge successful.", newWallet: user.wallet });
+    return res.status(200).json({
+      message: "Recharge submitted and awaiting approval.",
+      rechargeId: recharge._id,
+      status: recharge.status
+    });
 
   } catch (err) {
     console.error("Recharge error:", err);
@@ -297,15 +357,19 @@ app.put('/api/user/:id', async (req, res) => {
 app.post("/api/user/update-password", async (req, res) => {
   try {
     const { uid, currentPassword, newPassword } = req.body;
+    if (!uid || !currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "All password fields are required" });
+    }
 
     const user = await User.findById(uid);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (user.password !== currentPassword) {
+    const validPassword = await verifyPassword(user, currentPassword);
+    if (!validPassword) {
       return res.status(401).json({ success: false, message: "Current password is incorrect" });
     }
 
-    user.password = newPassword;
+    user.password = await hashPassword(newPassword);
     await user.save();
 
     res.json({ success: true, message: "Password updated successfully" });
@@ -318,6 +382,10 @@ app.post("/api/user/update-password", async (req, res) => {
 // Get user investments
 app.get('/api/investments/:userId', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user id' });
+    }
+
     const investments = await Investment.find({ uid: req.params.userId }).sort({ createdAt: -1 });
     res.json({ success: true, investments });
   } catch (err) {
@@ -328,9 +396,18 @@ app.get('/api/investments/:userId', async (req, res) => {
 
 // Get user by ID
 app.get('/api/user/:id', async (req, res) => {
-  const user = await User.findById(req.params.id);
-  if (user) return res.json(user);
-  res.status(404).json({ error: 'User not found' });
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (user) return res.json(sanitizeUser(user));
+    res.status(404).json({ error: 'User not found' });
+  } catch (err) {
+    console.error('Fetch user error:', err);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
 });
 
 // Routes
@@ -339,6 +416,10 @@ app.use('/api/agent', agentRoutes);
 
 app.get('/api/referrals/:userId', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.userId)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -351,6 +432,10 @@ app.get('/api/referrals/:userId', async (req, res) => {
 
 // Auto-update pending withdrawals to paid after 20 minutes
 setInterval(async () => {
+  if (mongoose.connection.readyState !== 1) {
+    return;
+  }
+
   const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000);
 
   try {
@@ -367,39 +452,13 @@ setInterval(async () => {
   }
 }, 60 * 1000); // check every minute
  
-// cron
- cron.schedule('*/10 * * * *', async () => {
-  try {
-    console.log("⏰ Running investment payout check...");
-
-    const now = new Date();
-    const investments = await Investment.find({ status: 'active' });
-
-    for (const inv of investments) {
-      const last = new Date(inv.lastPayoutDate);
-      const nextDue = new Date(last.getTime() + 24 * 60 * 60 * 1000);
-
-      if (now >= nextDue && inv.durationDays > 0) {
-        const user = await User.findById(inv.uid);
-        const dailyPay = inv.returnAmount / inv.durationDays;
-
-        user.wallet += dailyPay;
-        await user.save();
-
-        inv.durationDays -= 1;
-        inv.lastPayoutDate = now;
-        if (inv.durationDays === 0) inv.status = 'completed';
-
-        await inv.save();
-
-        console.log(`💰 Paid ${dailyPay.toFixed(2)} to ${user.fullName}`);
-      }
-    }
-  } catch (err) {
-    console.error("🚨 Cron job error:", err.message);
-  }
-});
 // Server Start
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-});
+async function startServer() {
+  await connectToDatabase();
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+startServer();

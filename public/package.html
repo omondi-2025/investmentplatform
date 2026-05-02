@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Packages - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Packages - TUST VANILLA</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -81,10 +81,10 @@
       background-color: #00317a;
     }
   </style>
-</head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" /></head>
 <body>
   <header>
-    <h2>📦 Investment Packages</h2>
+    <h2> Investment Packages</h2>
   </header>
 
   <div class="wallet">
@@ -95,7 +95,7 @@
 
   <script>
     // Simulate logged-in user (replace with your real localStorage logic)
-    const user = JSON.parse(localStorage.getItem("tc_user")); // ✅ match login page
+    const user = JSON.parse(localStorage.getItem("tc_user")); //  match login page
 
     if (!user) {
       alert("You must be logged in to view this page.");
@@ -123,8 +123,8 @@
       card.className = "package-card";
       card.innerHTML = `
         <h3>KES ${plan.amount}</h3>
-        <p>💰 Daily Earning: KES ${plan.daily}</p>
-        <p>📆 Duration: ${plan.duration} days</p>
+        <p> Daily Earning: KES ${plan.daily}</p>
+        <p> Duration: ${plan.duration} days</p>
         <button onclick="invest(${plan.amount}, ${plan.daily}, ${plan.duration})">Invest</button>
       `;
       container.appendChild(card);
@@ -132,7 +132,7 @@
 
    async function invest(amount, daily, duration) {
   if (wallet < amount) {
-    alert("❌ Insufficient wallet balance.");
+    alert(" Insufficient wallet balance.");
     return;
   }
 
@@ -147,7 +147,9 @@
     returnAmount: Number(daily) * Number(duration)
   };
 
-  const BASE_URL = "https://investmentplatform.onrender.com";
+  const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? window.location.origin
+    : "https://investmentplatform.onrender.com";
 
   try {
     const res = await fetch(`${BASE_URL}/api/invest`, {
@@ -164,15 +166,17 @@
       user.wallet = result.newWallet;
       localStorage.setItem("tc_user", JSON.stringify(user));
       walletDisplay.textContent = `KES ${user.wallet}`;
-      alert("✅ Investment successful!");
+      alert(" Investment successful!");
     } else {
-      alert("❌ " + (result.message || "Investment failed."));
+      alert(" " + (result.message || "Investment failed."));
     }
   } catch (err) {
     console.error(err);
-    alert("❌ Network error. Try again.");
+    alert(" Network error. Try again.");
   }
 }
   </script>
-</body>
+  <script src="nav.js"></script></body>
 </html>
+
+

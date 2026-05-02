@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Edit Profile - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Edit Profile - TUST VANILLA</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -61,7 +61,7 @@
       color: #721c24;
     }
   </style>
-</head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" /></head>
 <body>
   <div class="container">
     <h2>Edit Profile</h2>
@@ -79,7 +79,9 @@
 
   <script src="auth.js"></script>
   <script>
-  const BASE_URL = "https://investmentplatform.onrender.com";
+  const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? window.location.origin
+    : "https://investmentplatform.onrender.com";
 
   document.addEventListener("DOMContentLoaded", async () => {
     await protectPage();
@@ -122,23 +124,25 @@
 
       const msgBox = document.getElementById("messageBox");
       if (res.ok) {
-        msgBox.textContent = "✅ Profile updated successfully!";
+        msgBox.textContent = " Profile updated successfully!";
         msgBox.className = "alert success";
 
         // update local user cache
         const updatedUser = await res.json();
         storeUserLocally(updatedUser);
       } else {
-        msgBox.textContent = "❌ Failed to update profile.";
+        msgBox.textContent = " Failed to update profile.";
         msgBox.className = "alert error";
       }
     } catch (err) {
       console.error("Update failed:", err);
       const msgBox = document.getElementById("messageBox");
-      msgBox.textContent = "❌ Server error.";
+      msgBox.textContent = " Server error.";
       msgBox.className = "alert error";
     }
   });
 </script>
-</body>
+  <script src="nav.js"></script></body>
 </html>
+
+

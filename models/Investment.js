@@ -19,6 +19,10 @@ const investmentSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  initialDurationDays: {
+    type: Number,
+    required: true
+  },
   returnAmount: {
     type: Number,
     required: true

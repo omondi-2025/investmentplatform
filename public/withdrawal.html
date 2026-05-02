@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Withdraw Funds - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Withdraw Funds - TUST VANILLA</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
     body {
@@ -97,10 +97,10 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
   </style>
-</head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" /></head>
 <body>
   <header>
-    <a href="index.html" class="back-arrow">←</a>
+    <a href="index.html" class="back-arrow"></a>
     <h1>Withdraw Funds</h1>
   </header>
 
@@ -121,11 +121,11 @@
     </form>
 
        <p style="font-size: 14px; color: #555; margin-top: 8px;">
-  ⚠️ A <strong>15%</strong> tax will be deducted from the requested amount.
+   A <strong>15%</strong> tax will be deducted from the requested amount.
 </p>
 
 <p style="font-size: 14px; color: #d00000; margin-top: 5px;">
-  🚫 <strong>Note:</strong> Deposited or recharged amounts <strong>cannot be withdrawn</strong>. Only referral bonuses and earnings from investment packages are eligible for withdrawal.
+   <strong>Note:</strong> Deposited or recharged amounts <strong>cannot be withdrawn</strong>. Only referral bonuses and earnings from investment packages are eligible for withdrawal.
 </p>
 
 <div id="taxPreview" style="margin-top: 10px; font-size: 14px; color: #004aad;"></div>
@@ -136,7 +136,9 @@
 
   <script src="auth.js"></script>
   <script>
-    const apiUrl = 'https://investmentplatform.onrender.com'; // ✅ Replace with your deployed backend
+    const apiUrl = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+      ? window.location.origin
+      : 'https://investmentplatform.onrender.com';
     const withdrawForm = document.getElementById("withdrawForm");
     const withdrawMessage = document.getElementById("withdrawMessage");
     const historyList = document.getElementById("historyList");
@@ -177,7 +179,7 @@
       const date = new Date(item.createdAt).toLocaleString();
       historyList.innerHTML += `
         <li>
-          KES ${item.amount} (Tax: ${item.tax}) → ${item.status.toUpperCase()} on ${date}
+          KES ${item.amount} (Tax: ${item.tax})  ${item.status.toUpperCase()} on ${date}
         </li>
       `;
     });
@@ -215,7 +217,7 @@ submitBtn.textContent = "Submitting...";
         const hour = new Date().getHours();
         
        if (hour < 9 || hour >= 18) {
-  withdrawMessage.textContent = "❌ Withdrawals allowed only between 9AM and 6PM.";
+  withdrawMessage.textContent = " Withdrawals allowed only between 9AM and 6PM.";
   withdrawMessage.classList.add("error");
   submitBtn.disabled = false;
   submitBtn.textContent = "Request Withdrawal";
@@ -223,7 +225,7 @@ submitBtn.textContent = "Submitting...";
   }
 
        if (isNaN(amount) || amount < 150) {
-  withdrawMessage.textContent = "❌ Minimum withdrawal amount is Ksh 150.";
+  withdrawMessage.textContent = " Minimum withdrawal amount is Ksh 150.";
   withdrawMessage.classList.add("error");
   submitBtn.disabled = false;
   submitBtn.textContent = "Request Withdrawal";
@@ -231,7 +233,7 @@ submitBtn.textContent = "Submitting...";
   }
 
         if (userData.wallet < amount) {
-  withdrawMessage.textContent = "❌ Insufficient wallet balance.";
+  withdrawMessage.textContent = " Insufficient wallet balance.";
   withdrawMessage.classList.add("error");
   submitBtn.disabled = false;
   submitBtn.textContent = "Request Withdrawal";
@@ -250,33 +252,40 @@ submitBtn.textContent = "Submitting...";
           });
 
           const data = await res.json();
-withdrawMessage.className = "";
-withdrawMessage.style.display = "none";
+          withdrawMessage.className = "";
+          withdrawMessage.style.display = "none";
 
-if (data.success) {
- withdrawMessage.textContent = `✅ Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
-withdrawMessage.className = "alert success";
-withdrawMessage.style.display = "block";
-setTimeout(() => {
-  withdrawMessage.style.display = "none";
-}, 5000);
-} else {
-  withdrawMessage.textContent = "❌ " + (data.message || "Withdrawal failed.");
-withdrawMessage.className = "alert error";
-withdrawMessage.style.display = "block";
-setTimeout(() => {
-  withdrawMessage.style.display = "none";
-}, 5000);
-}
+          if (data.success) {
+            withdrawMessage.textContent = ` Ksh ${data.net} withdrawal submitted. Tax: ${data.tax}.`;
+            withdrawMessage.className = "alert success";
+            withdrawMessage.style.display = "block";
+            await fetchUserData();
+            await loadHistory();
+            withdrawForm.reset();
+            document.getElementById("taxPreview").textContent = "";
+          } else {
+            withdrawMessage.textContent = " " + (data.message || "Withdrawal failed.");
+            withdrawMessage.className = "alert error";
+            withdrawMessage.style.display = "block";
+          }
+
+          setTimeout(() => {
+            withdrawMessage.style.display = "none";
+          }, 5000);
         } catch (err) {
-  console.error("Withdrawal error:", err);
-  withdrawMessage.textContent = "❌ Server error occurred.";
-  withdrawMessage.classList.add("error");
-  submitBtn.disabled = false;
-  submitBtn.textContent = "Request Withdrawal";
+          console.error("Withdrawal error:", err);
+          withdrawMessage.textContent = " Server error occurred.";
+          withdrawMessage.classList.add("error");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Request Withdrawal";
+        }
 }
       });
     });
   </script>
-</body>
+  <script src="nav.js"></script></body>
 </html>
+
+
+

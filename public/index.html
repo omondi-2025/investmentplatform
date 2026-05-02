@@ -1,285 +1,87 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trustcode Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>TUST VANILLA  Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
-  <style>
-    :root {
-      --primary: #004aad;
-      --bg: #f4f8fb;
-      --card: #ffffff;
-      --text: #333;
-      --accent: #9c27b0;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: var(--bg);
-    }
-
-    header {
-      background: var(--primary);
-      color: #fff;
-      padding: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-
-    .support-btn, header button {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    .banner {
-      background: linear-gradient(to right, #00c6ff, #0072ff);
-      color: white;
-      padding: 1rem;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    .wallet-info {
-      background: var(--card);
-      margin: 1rem;
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    .wallet-info > div {
-      margin-bottom: 0.5rem;
-    }
-
-    .wallet-stats {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .wallet-box {
-      background: #f2f4ff;
-      padding: 1rem;
-      border-radius: 10px;
-      text-align: center;
-      border: 1px solid #d4dfff;
-      transition: transform 0.2s ease;
-    }
-
-    .wallet-box:hover {
-      transform: scale(1.03);
-    }
-
-    .wallet-box strong {
-      display: block;
-      margin-top: 0.5rem;
-      font-size: 1.2rem;
-    }
-
-    .quick-access {
-      background: var(--card);
-      margin: 1rem;
-      padding: 1rem;
-      border-radius: 12px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-    }
-
-    .quick-access h3 {
-      margin-bottom: 1rem;
-      text-align: center;
-    }
-
-    .grid-buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 1rem;
-    }
-
-    .grid-buttons a {
-      background: var(--primary);
-      padding: 1rem;
-      text-align: center;
-      text-decoration: none;
-      color: white;
-      border-radius: 10px;
-      font-weight: 500;
-      transition: all 0.3s ease;
-    }
-
-    .grid-buttons a:hover {
-      background: var(--accent);
-      transform: translateY(-2px);
-    }
-
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      background: white;
-      border-top: 1px solid #ddd;
-      display: flex;
-      justify-content: space-around;
-      padding: 0.5rem 0;
-      box-shadow: 0 -2px 5px rgba(0,0,0,0.05);
-    }
-
-    .bottom-nav a {
-      text-align: center;
-      color: #333;
-      text-decoration: none;
-      font-size: 0.85rem;
-      transition: color 0.3s ease;
-    }
-
-    .bottom-nav a:hover {
-      color: var(--primary);
-    }
-
-    .bottom-nav a span {
-      display: block;
-      font-size: 1.3rem;
-    }
-
-    .support-modal {
-  display: none;
-  position: fixed;
-  top: 60px;
-  left: 10px;
-  background: #004aad;
-  color: white;
-  border: 1px solid #ccc;
-  padding: 1rem;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  z-index: 999;
-}
-
-.support-modal a {
-  display: block;
-  margin: 10px 0;
-  color: white;
-  font-weight: bold;
-  text-decoration: none;
-}
-
-.support-modal a:hover {
-  text-decoration: underline;
-  color: yellow;
-}
-
-    @media (max-width: 500px) {
-      .wallet-stats {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 <body>
-
   <header>
-    <button class="support-btn" onclick="toggleSupport()">🗣️ Support</button>
-    <h3 style="color: yellow;">Trustcode</h3>
-    <button onclick="logout()">Logout</button>
+    <button onclick="toggleSupport()" style="background:none;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:600;font-size:0.88rem;">
+      <span class="material-symbols-outlined" style="font-size:20px;">support_agent</span>Support
+    </button>
+    <span style="font-weight:800;font-size:1.05rem;letter-spacing:0.5px;">TUST VANILLA</span>
+    <button onclick="logout()" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);color:#fff;border-radius:20px;padding:6px 12px;font-size:0.82rem;font-weight:600;cursor:pointer;">Logout</button>
   </header>
 
   <div class="support-modal" id="supportBox">
-    <a href="https://t.me/trustcodechannel" target="_blank">📢 Telegram Channel</a>
-    <a href="https://t.me/trustcodesupport" target="_blank">💬 Customer Support</a>
-  </div>
-
-  <div class="banner">
-    👋 Welcome to <strong>TRUSTCODE INVESTMENT</strong>
+    <a href="https://t.me/TUST VANILLAchannel" target="_blank">
+      <span class="material-symbols-outlined" style="vertical-align:middle;font-size:16px;margin-right:4px;">campaign</span>Telegram Channel
+    </a>
+    <a href="https://t.me/TUST VANILLAsupport" target="_blank">
+      <span class="material-symbols-outlined" style="vertical-align:middle;font-size:16px;margin-right:4px;">chat</span>Customer Support
+    </a>
   </div>
 
   <div class="wallet-info">
-    <div><strong id="userName">Loading...</strong></div>
-    <div><span id="userEmail">Loading...</span></div>
-
+    <div style="font-size:0.82rem;opacity:0.82;" id="userEmail">Loading...</div>
+    <div style="font-size:1.2rem;font-weight:800;margin:5px 0;" id="userName">---</div>
     <div class="wallet-stats">
-      <div class="wallet-box">Balance <strong>KES <span id="wallet">0</span></strong></div>
-      <div class="wallet-box">Cashouts <strong>KES <span id="cashouts">0.00</span></strong></div>
-      <div class="wallet-box">Expense <strong>KES <span id="expense">0.00</span></strong></div>
-      <div class="wallet-box">Daily Income <strong>KES <span id="income">0.00</span></strong></div>
+      <div class="wallet-box">Balance<strong>KES <span id="wallet">0</span></strong></div>
+      <div class="wallet-box">Cashouts<strong>KES <span id="cashouts">0.00</span></strong></div>
+      <div class="wallet-box">Invested<strong>KES <span id="expense">0.00</span></strong></div>
+      <div class="wallet-box">Daily<strong>KES <span id="income">0.00</span></strong></div>
     </div>
   </div>
 
-  <div class="quick-access">
-    <h3>Quick Access</h3>
+  <div class="card" style="margin:0 1rem 1rem;">
+    <div class="section-title">Quick Access</div>
     <div class="grid-buttons">
-      <a href="deposit.html">💳<br>Deposit</a>
-      <a href="package.html">📈<br>Invest</a>
-      <a href="withdrawal.html">💸<br>Cashout</a>
-      <a href="agent.html">👥<br>Team</a>
-      <a href="profile.html">👤<br>Profile</a>
+      <a href="deposit.html">
+        <span class="material-symbols-outlined">account_balance_wallet</span>Deposit
+      </a>
+      <a href="package.html">
+        <span class="material-symbols-outlined">trending_up</span>Invest
+      </a>
+      <a href="withdrawal.html">
+        <span class="material-symbols-outlined">payments</span>Cashout
+      </a>
+      <a href="agent.html">
+        <span class="material-symbols-outlined">group</span>Team
+      </a>
+      <a href="profile.html">
+        <span class="material-symbols-outlined">person</span>Profile
+      </a>
     </div>
   </div>
 
-  <nav class="bottom-nav">
-    <a href="index.html"><span>🏠</span>Home</a>
-    <a href="package.html"><span>📦</span>Packages</a>
-    <a href="agent.html"><span>👥</span>Invite</a>
-    <a href="profile.html"><span>👤</span>Profile</a>
-  </nav>
-
-  <!-- Page Logic -->
+  <script src="nav.js"></script>
   <script>
-  function logout() {
-    localStorage.clear();
-    window.location.href = "login.html";
-  }
-
- function toggleSupport() {
-  const box = document.getElementById("supportBox");
-  if (box.style.display === "block") {
-    box.style.opacity = 0;
-    setTimeout(() => box.style.display = "none", 200);
-  } else {
-    box.style.display = "block";
-    box.style.opacity = 0;
-    setTimeout(() => box.style.opacity = 1, 10);
-  }
-} // ✅ CLOSES toggleSupport properly
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const BASE_URL = "https://investmentplatform.onrender.com";
-  const currentUser = JSON.parse(localStorage.getItem("tc_user"));
-
-  if (!currentUser || !currentUser._id) {
-    window.location.href = "login.html";
-    return;
-  }
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/user/${currentUser._id}`);
-    const user = await res.json();
-
-    document.getElementById("userName").textContent = user.fullName || "User";
-    document.getElementById("userEmail").textContent = user.email || "";
-    document.getElementById("wallet").textContent = user.wallet || 0;
-    document.getElementById("cashouts").textContent = user.cashouts || 0;
-    document.getElementById("expense").textContent = user.expense || 0;
-    document.getElementById("income").textContent = user.dailyIncome || 0;
-  } catch (error) {
-    console.error("Failed to fetch user:", error);
-    alert("⚠️ Failed to load user data. Please try logging in again.");
-    logout();
-  }
-});
-</script>
+    function logout() { localStorage.clear(); window.location.href = "login.html"; }
+    function toggleSupport() {
+      var box = document.getElementById("supportBox");
+      box.style.display = box.style.display === "block" ? "none" : "block";
+    }
+    document.addEventListener("DOMContentLoaded", async () => {
+      const BASE_URL = ["localhost","127.0.0.1"].includes(window.location.hostname)
+        ? window.location.origin : "https://investmentplatform.onrender.com";
+      const currentUser = JSON.parse(localStorage.getItem("tc_user"));
+      if (!currentUser || !currentUser._id) { window.location.href = "login.html"; return; }
+      try {
+        const res = await fetch(`${BASE_URL}/api/user/${currentUser._id}`);
+        const user = await res.json();
+        document.getElementById("userName").textContent = user.fullName || "User";
+        document.getElementById("userEmail").textContent = user.email || "";
+        document.getElementById("wallet").textContent = (user.wallet||0).toFixed(2);
+        document.getElementById("cashouts").textContent = (user.cashouts||0).toFixed(2);
+        document.getElementById("expense").textContent = (user.expense||0).toFixed(2);
+        document.getElementById("income").textContent = (user.dailyIncome||0).toFixed(2);
+      } catch (e) { console.error(e); logout(); }
+    });
+  </script>
 </body>
 </html>
+
+

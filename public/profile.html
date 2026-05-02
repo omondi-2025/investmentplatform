@@ -1,9 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>User Profile - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>User Profile - TUST VANILLA</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -72,7 +74,13 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <header>
+    <a href="index.html" class="back-arrow"><span class="material-symbols-outlined">arrow_back</span></a>
+    <h3>TUST VANILLA</h3>
+    <span style="width: 24px;"></span>
+  </header>
+
+  <div class="container" style="margin-top:1rem; margin-bottom:1rem;">
     <h2>My Profile</h2>
     <div class="profile-img">
       <img src="default-avatar.png" id="profileImage" alt="Profile Picture" />
@@ -91,25 +99,28 @@
       <div id="investmentsList">Loading investments...</div>
     </div>
 
-    <button onclick="window.location.href='edit-profile.html'">✏️ Edit Profile</button>
-    <button class="secondary" onclick="window.location.href='change-password.html'">🔐 Change Password</button>
-    <button class="secondary" onclick="window.location.href='index.html'">← Back to Dashboard</button>
+    <button onclick="window.location.href='edit-profile.html'">Edit Profile</button>
+    <button class="secondary" onclick="window.location.href='change-password.html'">Change Password</button>
+    <a href="https://investmentplatform-three.vercel.app" target="_blank" class="btn btn-download" style="margin-top:15px;">Download App</a>
+    <button class="secondary" onclick="window.location.href='index.html'">Back to Dashboard</button>
   </div>
 
   <script>
-  const BASE_URL = "https://investmentplatform.onrender.com";
+  const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? window.location.origin
+    : "https://investmentplatform.onrender.com";
 
   document.addEventListener("DOMContentLoaded", async () => {
     const storedUser = JSON.parse(localStorage.getItem("tc_user"));
     if (!storedUser || !storedUser._id) {
-      alert("⚠️ Invalid user session. Please log in again.");
+      alert(" Invalid user session. Please log in again.");
       window.location.href = "login.html";
       return;
     }
 
     const uid = storedUser._id;
 
-    // ✅ Load user profile
+    //  Load user profile
     try {
       const res = await fetch(`${BASE_URL}/api/user/${uid}`);
       const user = await res.json();
@@ -121,11 +132,11 @@
       document.getElementById("referredBy").textContent = user.referredBy || 'None';
       document.getElementById("wallet").textContent = (user.wallet || 0).toFixed(2);
     } catch (err) {
-      alert("⚠️ Failed to load profile info.");
+      alert(" Failed to load profile info.");
       console.error(err);
     }
 
-    // ✅ Load recent investments
+    //  Load recent investments
     try {
       const res = await fetch(`${BASE_URL}/api/investments/${uid}`);
       const data = await res.json();
@@ -139,11 +150,12 @@
       } else {
         investments.slice(0, 5).forEach(inv => {
           const date = new Date(inv.createdAt).toLocaleString();
+          const totalDays = inv.initialDurationDays || inv.durationDays;
           const div = document.createElement("div");
           div.className = "investment-card";
           div.innerHTML = `
             <p><strong>Plan:</strong> KES ${inv.planAmount}</p>
-            <p><strong>Daily:</strong> KES ${(inv.returnAmount / inv.durationDays).toFixed(2)}</p>
+            <p><strong>Daily:</strong> KES ${(inv.returnAmount / totalDays).toFixed(2)}</p>
             <p><strong>Duration:</strong> ${inv.durationDays} days</p>
             <p><strong>Status:</strong> ${inv.status}</p>
             <p><strong>Date:</strong> ${date}</p>
@@ -156,5 +168,8 @@
     }
   });
   </script>
+  <script src="nav.js"></script>
 </body>
 </html>
+
+

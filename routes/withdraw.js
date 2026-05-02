@@ -61,7 +61,13 @@ router.post('/', async (req, res) => {
     user.cashouts += amount;
     await user.save();
 
-    res.status(201).json({ message: "Withdrawal request submitted", withdrawal });
+    res.status(201).json({
+      success: true,
+      message: "Withdrawal request submitted",
+      tax,
+      net,
+      withdrawal
+    });
   } catch (err) {
     console.error("Withdrawal error:", err);
     res.status(500).json({ message: "Internal server error" });

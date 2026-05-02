@@ -9,7 +9,7 @@ const rechargeSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   number: String,
   transactionCode: { type: String, required: true, unique: true },
-  status: { type: String, enum: ['pending', 'confirmed'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'confirmed', 'rejected'], default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
 

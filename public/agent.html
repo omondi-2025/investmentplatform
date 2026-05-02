@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Agent Dashboard - Trustcode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Agent Dashboard - TUST VANILLA</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -125,10 +125,10 @@
   opacity: 1;
 }
   </style>
-</head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" /></head>
 <body>
   <header>
-    <a href="index.html" class="back-arrow">🔙</a>
+    <a href="index.html" class="back-arrow"></a>
     <h1>Agent Dashboard</h1>
   </header>
 
@@ -157,30 +157,30 @@
     <div class="referral-box">
       <h3>Your Referral Link</h3>
       <input type="text" id="referralLink" readonly />
-      <button class="copy-btn" onclick="copyReferral()">📋 Copy Referral Link</button>
+      <button class="copy-btn" onclick="copyReferral()"> Copy Referral Link</button>
 
       <div class="note">
-        <p>💰 <strong>Referral Earnings:</strong></p>
+        <p> <strong>Referral Earnings:</strong></p>
         <ul>
-          <li>🔹 Level 1 (Direct Referrals): Earn <strong>20%</strong> of what they invest.</li>
-          <li>🔹 Level 2 (Their Referrals): Earn <strong>1%</strong> of what their referrals invest.</li>
+          <li> Level 1 (Direct Referrals): Earn <strong>20%</strong> of what they invest.</li>
+          <li> Level 2 (Their Referrals): Earn <strong>1%</strong> of what their referrals invest.</li>
         </ul>
-        <p>👉 Share your link and start earning!</p>
+        <p> Share your link and start earning!</p>
       </div>
     </div>
 
-    <button onclick="window.location.href='referral.html'">📢 View Referrals</button>
-<button onclick="window.location.href='withdrawal.html'" style="margin-left: 10px;">💸 Withdraw Earnings</button>
+    <button onclick="window.location.href='referral.html'"> View Referrals</button>
+<button onclick="window.location.href='withdrawal.html'" style="margin-left: 10px;"> Withdraw Earnings</button>
 
 <div style="margin-top: 30px; padding: 15px; background: #f0f8ff; border-radius: 8px;">
   <h3 style="color: #004aad;">Your Referral Link</h3>
   <p>Share this link to invite others and earn:</p>
   <ul>
-    <li>👥 <strong>Level 1:</strong> Earn 20% when your direct referral invests</li>
-    <li>👤 <strong>Level 2:</strong> Earn 1% when their referral invests</li>
+    <li> <strong>Level 1:</strong> Earn 20% when your direct referral invests</li>
+    <li> <strong>Level 2:</strong> Earn 1% when their referral invests</li>
   </ul>
  <input type="text" id="referralLink2" readonly style="width: 100%; padding: 10px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc;" />
-<button onclick="copyReferralLink()">📋 Copy Link</button>
+<button onclick="copyReferralLink()"> Copy Link</button>
 </div>
 
   <script>
@@ -198,7 +198,10 @@
     document.getElementById("referralLink2").value = referralUrl;
 
     try {
-      const res = await fetch(`https://investmentplatform.onrender.com/api/agent/dashboard/${userData.referralCode}`);
+      const baseUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? window.location.origin
+        : "https://investmentplatform.onrender.com";
+      const res = await fetch(`${baseUrl}/api/agent/dashboard/${userData.referralCode}`);
       if (!res.ok) {
         throw new Error("Failed to fetch agent data");
       }
@@ -211,25 +214,27 @@
       document.getElementById("agentBalance").textContent = (data.totalEarnings - data.totalWithdrawn).toFixed(2);
     } catch (err) {
       console.error("Failed to load agent data:", err);
-      alert("⚠️ Could not load dashboard data. Please check your internet or try again later.");
+      alert(" Could not load dashboard data. Please check your internet or try again later.");
     }
   }
 
   function copyReferral() {
     const input = document.getElementById("referralLink");
     navigator.clipboard.writeText(input.value)
-      .then(() => alert("✅ Referral link copied!"))
-      .catch(() => alert("❌ Failed to copy link."));
+      .then(() => alert(" Referral link copied!"))
+      .catch(() => alert(" Failed to copy link."));
   }
 
   function copyReferralLink() {
     const input = document.getElementById("referralLink2");
     navigator.clipboard.writeText(input.value)
-      .then(() => alert("✅ Referral link copied!"))
-      .catch(() => alert("❌ Failed to copy link."));
+      .then(() => alert(" Referral link copied!"))
+      .catch(() => alert(" Failed to copy link."));
   }
 
   document.addEventListener("DOMContentLoaded", loadAgentData);
   </script>
-</body>
+  <script src="nav.js"></script></body>
 </html>
+
+
