@@ -268,7 +268,9 @@ async function getUnifiedHistoryPayload(userId) {
     rechargedCash: rechargeItems
       .filter((i) => i.status === 'confirmed')
       .reduce((sum, i) => sum + (i.amount || 0), 0),
-    withdrawnCash: withdrawalItems.reduce((sum, i) => sum + (i.amount || 0), 0),
+    withdrawnCash: withdrawalItems
+      .filter((i) => ['approved', 'paid'].includes(String(i.status || '').toLowerCase()))
+      .reduce((sum, i) => sum + (i.amount || 0), 0),
     referralEarnings: referralItems.reduce((sum, i) => sum + (i.amount || 0), 0)
   };
 
