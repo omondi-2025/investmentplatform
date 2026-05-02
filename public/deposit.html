@@ -102,6 +102,10 @@
     <h1>Recharge Wallet</h1>
     <a href="index.html"> Go to Dashboard</a>
 
+    <div style="margin-top: 12px; font-weight: 700; color: #0f172a;">
+      Wallet Balance: KES <span id="walletBalance">0.00</span>
+    </div>
+
     <div class="instructions">
       <strong>To recharge your wallet:</strong>
       <ol>
@@ -124,6 +128,11 @@
       <button type="submit">Submit</button>
       <div id="rechargeMessage"></div>
     </form>
+
+    <h3 style="margin-top:16px; color:#004aad;">Recharge History</h3>
+    <ul id="rechargeHistory" style="list-style:none; padding-left:0; margin:0;">
+      <li style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">Loading history...</li>
+    </ul>
   </div>
   <script>
  const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
@@ -157,6 +166,71 @@ const mpesaNumbers = ["0102188852"];
   const rechargeForm = document.getElementById("rechargeForm");
   const rechargeMessage = document.getElementById("rechargeMessage");
   const submitBtn = rechargeForm.querySelector("button");
+  const rechargeHistory = document.getElementById("rechargeHistory");
+  const walletBalanceEl = document.getElementById("walletBalance");
+
+  function statusColor(status) {
+    const normalized = String(status || "pending").toLowerCase();
+    if (normalized === "confirmed") return { bg: "#dcfce7", text: "#166534", label: "APPROVED" };
+    if (normalized === "rejected") return { bg: "#fee2e2", text: "#991b1b", label: "REJECTED" };
+    return { bg: "#fef3c7", text: "#92400e", label: "PENDING" };
+  }
+
+  async function refreshWallet() {
+    if (!user || !user._id) return;
+    try {
+      const res = await fetch(`${BASE_URL}/api/user/${user._id}`, { cache: "no-store" });
+      const currentUser = await res.json();
+      if (res.ok && currentUser && currentUser._id) {
+        walletBalanceEl.textContent = Number(currentUser.wallet || 0).toFixed(2);
+        localStorage.setItem("tc_user", JSON.stringify({ ...currentUser, lastUpdated: Date.now() }));
+      }
+    } catch (_) {
+      // Keep page usable if refresh fails.
+    }
+  }
+
+  async function loadRechargeHistory() {
+    if (!user || !user._id) return;
+    rechargeHistory.innerHTML = '<li style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">Loading history...</li>';
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/recharges/${user._id}`, { cache: "no-store" });
+      const history = await res.json();
+      if (!Array.isArray(history) || history.length === 0) {
+        rechargeHistory.innerHTML = '<li style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">No recharge records yet.</li>';
+        return;
+      }
+
+      rechargeHistory.innerHTML = "";
+      history.forEach((item) => {
+        const status = statusColor(item.status);
+        const li = document.createElement("li");
+        li.style.cssText = "background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px;";
+        li.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <strong>KES ${Number(item.amount || 0).toFixed(2)}</strong>
+            <span style="padding:4px 8px; border-radius:999px; background:${status.bg}; color:${status.text}; font-weight:700; font-size:12px;">${status.label}</span>
+          </div>
+          <div style="font-size:12px; color:#64748b; margin-top:4px;">${new Date(item.createdAt).toLocaleString()}</div>
+        `;
+        rechargeHistory.appendChild(li);
+      });
+    } catch (err) {
+      rechargeHistory.innerHTML = '<li style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0; color:#991b1b;">Failed to load recharge history.</li>';
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await refreshWallet();
+    await loadRechargeHistory();
+
+    // Poll every 10s so admin approvals/rejections reflect automatically.
+    setInterval(async () => {
+      await refreshWallet();
+      await loadRechargeHistory();
+    }, 10000);
+  });
 
   rechargeForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -209,6 +283,7 @@ const mpesaNumbers = ["0102188852"];
         rechargeMessage.textContent = ` KES ${amount.toFixed(2)} submitted. Wallet balance will update after admin approval.`;
         rechargeMessage.classList.add("success");
         rechargeForm.reset();
+        await loadRechargeHistory();
       } else {
         rechargeMessage.textContent = ` ${data.error}`;
         rechargeMessage.classList.add("error");

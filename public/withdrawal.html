@@ -178,8 +178,25 @@
           historyList.innerHTML = "";
           history.forEach((item) => {
             const date = new Date(item.createdAt).toLocaleString();
+            const status = String(item.status || "pending").toLowerCase();
+            let statusBg = "#fef3c7";
+            let statusColor = "#92400e";
+            if (status === "approved" || status === "paid") {
+              statusBg = "#dcfce7";
+              statusColor = "#166534";
+            } else if (status === "rejected") {
+              statusBg = "#fee2e2";
+              statusColor = "#991b1b";
+            }
             const li = document.createElement("li");
-            li.textContent = `KES ${item.amount} (Tax: ${item.tax || 0}) ${String(item.status || "pending").toUpperCase()} on ${date}`;
+            li.innerHTML = `
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <strong>KES ${Number(item.amount || 0).toFixed(2)}</strong>
+                <span style="padding:4px 8px; border-radius:999px; background:${statusBg}; color:${statusColor}; font-weight:700; font-size:12px;">${status.toUpperCase()}</span>
+              </div>
+              <div style="margin-top:4px; color:#334155; font-size:13px;">Tax: KES ${Number(item.tax || 0).toFixed(2)}</div>
+              <div style="margin-top:2px; color:#64748b; font-size:12px;">${date}</div>
+            `;
             historyList.appendChild(li);
           });
         } catch (err) {

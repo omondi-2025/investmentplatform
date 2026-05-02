@@ -95,6 +95,11 @@
 
   <div class="packages" id="packageContainer"></div>
 
+  <div style="margin-top:2rem;">
+    <h3 style="color:#004aad; margin-bottom:10px;">Package History</h3>
+    <div id="packageHistory" style="display:grid; gap:10px;"></div>
+  </div>
+
   <script>
     // Simulate logged-in user (replace with your real localStorage logic)
     const user = JSON.parse(localStorage.getItem("tc_user")); //  match login page
@@ -106,7 +111,7 @@
 
     let wallet = user.wallet || 0;
     const walletDisplay = document.getElementById("walletBalance");
-    walletDisplay.textContent = `KES ${wallet}`;
+    walletDisplay.textContent = `KES ${Number(wallet).toFixed(2)}`;
 
     const investmentPackages = [
       { amount: 300, daily: 80, duration: 7 },
@@ -131,6 +136,92 @@
       `;
       container.appendChild(card);
     });
+
+   function formatDateTime(value) {
+    return new Date(value).toLocaleString();
+   }
+
+   function computeDaysRemaining(endDate) {
+    const diff = new Date(endDate).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / 86400000));
+   }
+
+   function computeTotalEarned(inv) {
+    const totalDays = Number(inv.initialDurationDays || inv.durationDays || 1);
+    const elapsedDays = Math.max(0, totalDays - Number(inv.durationDays || 0));
+    const daily = Number(inv.returnAmount || 0) / totalDays;
+    if (String(inv.status).toLowerCase() === "completed") {
+      return Number(inv.returnAmount || 0);
+    }
+    return Number((daily * elapsedDays).toFixed(2));
+   }
+
+   function nextEarningReflection(inv) {
+    const base = inv.lastPayoutDate ? new Date(inv.lastPayoutDate) : new Date(inv.startDate || inv.createdAt || Date.now());
+    base.setDate(base.getDate() + 1);
+    return base.toLocaleString();
+   }
+
+   async function loadPackageHistory() {
+    const historyBox = document.getElementById("packageHistory");
+    historyBox.innerHTML = '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px;">Loading package history...</div>';
+
+    try {
+      const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? window.location.origin
+        : "https://investmentplatform.onrender.com";
+
+      const res = await fetch(`${BASE_URL}/api/investments/${user._id}`, { cache: "no-store" });
+      const data = await res.json();
+      const investments = Array.isArray(data.investments) ? data.investments : [];
+
+      if (!investments.length) {
+        historyBox.innerHTML = '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px;">No package history yet.</div>';
+        return;
+      }
+
+      historyBox.innerHTML = "";
+      investments.forEach((inv) => {
+        const status = String(inv.status || "active").toLowerCase();
+        const statusBg = status === "completed" ? "#dcfce7" : "#fef3c7";
+        const statusColor = status === "completed" ? "#166534" : "#92400e";
+        const totalDays = Number(inv.initialDurationDays || inv.durationDays || 0);
+        const dailyEarning = totalDays > 0 ? Number(inv.returnAmount || 0) / totalDays : 0;
+
+        const card = document.createElement("div");
+        card.style.cssText = "background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px;";
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <strong>${inv.planName || "Package"}</strong>
+            <span style="padding:4px 8px; border-radius:999px; background:${statusBg}; color:${statusColor}; font-size:12px; font-weight:700;">${status.toUpperCase()}</span>
+          </div>
+          <div style="margin-top:6px; font-size:13px; color:#334155;">Amount Invested: KES ${Number(inv.planAmount || 0).toFixed(2)}</div>
+          <div style="margin-top:4px; font-size:13px; color:#334155;">Total Earned: KES ${computeTotalEarned(inv).toFixed(2)}</div>
+          <div style="margin-top:4px; font-size:13px; color:#334155;">Days Remaining: ${computeDaysRemaining(inv.endDate)}</div>
+          <div style="margin-top:4px; font-size:13px; color:#334155;">Started: ${formatDateTime(inv.startDate || inv.createdAt)}</div>
+          <div style="margin-top:4px; font-size:13px; color:#334155;">Ends: ${formatDateTime(inv.endDate)}</div>
+          <div style="margin-top:4px; font-size:13px; color:#334155;">Daily Earning: KES ${dailyEarning.toFixed(2)}</div>
+          <div style="margin-top:4px; font-size:12px; color:#64748b;">Next earnings reflection: ${nextEarningReflection(inv)}</div>
+        `;
+        historyBox.appendChild(card);
+      });
+    } catch (err) {
+      historyBox.innerHTML = '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px; color:#991b1b;">Failed to load package history.</div>';
+    }
+   }
+
+   async function refreshWallet() {
+    const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+      ? window.location.origin
+      : "https://investmentplatform.onrender.com";
+    const res = await fetch(`${BASE_URL}/api/user/${user._id}`, { cache: "no-store" });
+    const fresh = await res.json();
+    if (res.ok && fresh && fresh._id) {
+      wallet = Number(fresh.wallet || 0);
+      walletDisplay.textContent = `KES ${wallet.toFixed(2)}`;
+      localStorage.setItem("tc_user", JSON.stringify({ ...fresh, lastUpdated: Date.now() }));
+    }
+   }
 
    async function invest(amount, daily, duration) {
   if (wallet < amount) {
@@ -165,9 +256,8 @@
     const result = await res.json();
 
     if (res.ok) {
-      user.wallet = result.newWallet;
-      localStorage.setItem("tc_user", JSON.stringify(user));
-      walletDisplay.textContent = `KES ${user.wallet}`;
+      await refreshWallet();
+      await loadPackageHistory();
       alert(" Investment successful!");
     } else {
       alert(" " + (result.message || "Investment failed."));
@@ -177,6 +267,11 @@
     alert(" Network error. Try again.");
   }
 }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await refreshWallet();
+    await loadPackageHistory();
+  });
   </script>
   <script src="nav.js"></script></body>
 </html>

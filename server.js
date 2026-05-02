@@ -194,6 +194,22 @@ app.get("/api/withdrawals/:userId", async (req, res) => {
   }
 });
 
+// ✅ GET: Recharge history for a user
+app.get('/api/recharges/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    const recharges = await Recharge.find({ uid: userId }).sort({ createdAt: -1 });
+    res.json(recharges);
+  } catch (err) {
+    console.error('Recharge history error:', err);
+    res.status(500).json({ message: 'Failed to fetch recharge history' });
+  }
+});
+
 async function getUnifiedHistoryPayload(userId) {
   const user = await User.findById(userId);
   if (!user) {
@@ -514,27 +530,7 @@ app.get('/api/referrals/:userId', async (req, res) => {
   }
 });
 
-// Auto-update pending withdrawals to paid after 20 minutes
-setInterval(async () => {
-  if (mongoose.connection.readyState !== 1) {
-    return;
-  }
-
-  const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000);
-
-  try {
-    const updated = await Withdrawal.updateMany(
-      { status: "pending", createdAt: { $lte: twentyMinsAgo } },
-      { $set: { status: "paid" } }
-    );
-
-    if (updated.modifiedCount > 0) {
-      console.log(`✅ ${updated.modifiedCount} withdrawal(s) marked as paid.`);
-    }
-  } catch (err) {
-    console.error("Auto-update withdrawal error:", err);
-  }
-}, 60 * 1000); // check every minute
+// Withdrawals now remain pending until explicitly approved/rejected by admin.
  
 // Server Start
 async function startServer() {

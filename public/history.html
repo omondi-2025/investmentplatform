@@ -91,7 +91,7 @@
       }
 
       try {
-        const res = await fetch(`${BASE_URL}/api/history/${user._id}`);
+        const res = await fetch(`${BASE_URL}/api/history/${user._id}`, { cache: "no-store" });
         const data = await res.json();
         if (!res.ok || !data.success) {
           throw new Error(data.message || "Failed to load history");
@@ -111,7 +111,7 @@
 
         data.items.forEach((item) => list.appendChild(renderItem(item)));
       } catch (err) {
-        document.getElementById("historyList").innerHTML = '<li class="history-item">Failed to load history records.</li>';
+        document.getElementById("historyList").innerHTML = `<li class="history-item">Failed to load history records. ${String(err.message || "")}</li>`;
       }
     });
   </script>
