@@ -16,6 +16,26 @@ router.post('/', async (req, res) => {
     const user = await User.findById(uid);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Limit each user to 3 withdrawal requests per calendar day.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+    const todayWithdrawalCount = await Withdrawal.countDocuments({
+      uid,
+      createdAt: {
+        $gte: startOfToday,
+        $lt: startOfTomorrow
+      }
+    });
+
+    if (todayWithdrawalCount >= 3) {
+      return res.status(400).json({
+        message: "Maximum of 3 withdrawals per day reached. Please try again tomorrow."
+      });
+    }
+
     // 💡 Restrict withdrawal to non-deposit earnings
     const allowedWithdrawal = Number(user.wallet || 0) - Number(user.expense || 0);
     if (allowedWithdrawal < amount) {

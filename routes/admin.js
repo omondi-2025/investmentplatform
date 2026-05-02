@@ -45,12 +45,30 @@ router.get('/recharges/pending', async (req, res) => {
   }
 });
 
+router.get('/recharges', async (req, res) => {
+  try {
+    const recharges = await Recharge.find({}).sort({ createdAt: -1 });
+    res.json(recharges);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch recharges' });
+  }
+});
+
 router.get('/withdrawals/pending', async (req, res) => {
   try {
     const withdrawals = await Withdrawal.find({ status: 'pending' }).sort({ createdAt: -1 });
     res.json(withdrawals);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch pending withdrawals' });
+  }
+});
+
+router.get('/withdrawals', async (req, res) => {
+  try {
+    const withdrawals = await Withdrawal.find({}).sort({ createdAt: -1 });
+    res.json(withdrawals);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch withdrawals' });
   }
 });
 

@@ -29,6 +29,37 @@
     </div>
 
     <div id="adminPanel" style="display:none;">
+      <h2 style="margin-bottom:0.75rem;">Status Totals</h2>
+      <div class="card" style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; min-width:460px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Type</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Pending</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Approved</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Rejected</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:8px; border-bottom:1px solid #f1f5f9;">Recharges</td>
+              <td id="countRechargePending" style="padding:8px; text-align:right; border-bottom:1px solid #f1f5f9;">0</td>
+              <td id="countRechargeApproved" style="padding:8px; text-align:right; border-bottom:1px solid #f1f5f9;">0</td>
+              <td id="countRechargeRejected" style="padding:8px; text-align:right; border-bottom:1px solid #f1f5f9;">0</td>
+              <td id="countRechargeTotal" style="padding:8px; text-align:right; border-bottom:1px solid #f1f5f9; font-weight:700;">0</td>
+            </tr>
+            <tr>
+              <td style="padding:8px;">Withdrawals</td>
+              <td id="countWithdrawalPending" style="padding:8px; text-align:right;">0</td>
+              <td id="countWithdrawalApproved" style="padding:8px; text-align:right;">0</td>
+              <td id="countWithdrawalRejected" style="padding:8px; text-align:right;">0</td>
+              <td id="countWithdrawalTotal" style="padding:8px; text-align:right; font-weight:700;">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <h2 style="margin-bottom:0.75rem;">Pending Recharges</h2>
       <div id="rechargeList" class="recharge-list">
         <p>Loading recharge requests...</p>
@@ -37,6 +68,44 @@
       <h2 style="margin:1rem 0 0.75rem;">Pending Withdrawals</h2>
       <div id="withdrawalList" class="recharge-list">
         <p>Loading withdrawal requests...</p>
+      </div>
+
+      <h2 style="margin:1rem 0 0.75rem;">All Recharges</h2>
+      <div class="card" style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; min-width:720px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Date</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Name</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Phone</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Amount</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="allRechargesTableBody">
+            <tr><td colspan="5" style="padding:10px; color:#64748b;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style="margin:1rem 0 0.75rem;">All Withdrawals</h2>
+      <div class="card" style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; min-width:820px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Date</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">User ID</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Phone</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Amount</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Tax</th>
+              <th style="text-align:right; padding:8px; border-bottom:1px solid #e2e8f0;">Net</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e2e8f0;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="allWithdrawalsTableBody">
+            <tr><td colspan="7" style="padding:10px; color:#64748b;">Loading...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -111,24 +180,103 @@
       }
     }
 
-    async function fetchPendingRecharges() {
-      const res = await fetch(`${apiUrl}/api/admin/recharges/pending`, {
-        headers: { 'x-admin-token': getAdminToken() }
+    async function fetchWithAdminToken(pathname) {
+      const res = await fetch(`${apiUrl}${pathname}`, {
+        headers: { 'x-admin-token': getAdminToken() },
+        cache: 'no-store'
       });
       if (res.status === 401) {
         throw new Error('unauthorized');
+      }
+      if (!res.ok) {
+        throw new Error('request_failed');
       }
       return await res.json();
     }
 
-    async function fetchPendingWithdrawals() {
-      const res = await fetch(`${apiUrl}/api/admin/withdrawals/pending`, {
-        headers: { 'x-admin-token': getAdminToken() }
-      });
-      if (res.status === 401) {
-        throw new Error('unauthorized');
+    function normalizeRechargeStatus(status) {
+      const s = String(status || '').toLowerCase();
+      if (s === 'confirmed') return 'approved';
+      if (s === 'rejected') return 'rejected';
+      return 'pending';
+    }
+
+    function normalizeWithdrawalStatus(status) {
+      const s = String(status || '').toLowerCase();
+      if (s === 'approved' || s === 'paid') return 'approved';
+      if (s === 'rejected') return 'rejected';
+      return 'pending';
+    }
+
+    function statusBadge(status) {
+      const normalized = String(status || 'pending').toLowerCase();
+      if (normalized === 'approved') {
+        return '<span style="padding:3px 8px; border-radius:999px; background:#dcfce7; color:#166534; font-weight:700; font-size:12px;">APPROVED</span>';
       }
-      return await res.json();
+      if (normalized === 'rejected') {
+        return '<span style="padding:3px 8px; border-radius:999px; background:#fee2e2; color:#991b1b; font-weight:700; font-size:12px;">REJECTED</span>';
+      }
+      return '<span style="padding:3px 8px; border-radius:999px; background:#fef3c7; color:#92400e; font-weight:700; font-size:12px;">PENDING</span>';
+    }
+
+    function updateCounts(recharges, withdrawals) {
+      const rechargeCounts = { pending: 0, approved: 0, rejected: 0 };
+      const withdrawalCounts = { pending: 0, approved: 0, rejected: 0 };
+
+      recharges.forEach((item) => {
+        rechargeCounts[normalizeRechargeStatus(item.status)] += 1;
+      });
+      withdrawals.forEach((item) => {
+        withdrawalCounts[normalizeWithdrawalStatus(item.status)] += 1;
+      });
+
+      document.getElementById('countRechargePending').textContent = rechargeCounts.pending;
+      document.getElementById('countRechargeApproved').textContent = rechargeCounts.approved;
+      document.getElementById('countRechargeRejected').textContent = rechargeCounts.rejected;
+      document.getElementById('countRechargeTotal').textContent = recharges.length;
+
+      document.getElementById('countWithdrawalPending').textContent = withdrawalCounts.pending;
+      document.getElementById('countWithdrawalApproved').textContent = withdrawalCounts.approved;
+      document.getElementById('countWithdrawalRejected').textContent = withdrawalCounts.rejected;
+      document.getElementById('countWithdrawalTotal').textContent = withdrawals.length;
+    }
+
+    function renderAllRechargesTable(recharges) {
+      const body = document.getElementById('allRechargesTableBody');
+      if (!recharges.length) {
+        body.innerHTML = '<tr><td colspan="5" style="padding:10px; color:#64748b;">No recharge records.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = recharges.map((recharge) => `
+        <tr>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${new Date(recharge.createdAt).toLocaleString()}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${recharge.name || 'N/A'}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${recharge.phone || 'N/A'}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9; text-align:right;">KES ${Number(recharge.amount || 0).toFixed(2)}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${statusBadge(normalizeRechargeStatus(recharge.status))}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAllWithdrawalsTable(withdrawals) {
+      const body = document.getElementById('allWithdrawalsTableBody');
+      if (!withdrawals.length) {
+        body.innerHTML = '<tr><td colspan="7" style="padding:10px; color:#64748b;">No withdrawal records.</td></tr>';
+        return;
+      }
+
+      body.innerHTML = withdrawals.map((withdrawal) => `
+        <tr>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${new Date(withdrawal.createdAt).toLocaleString()}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${withdrawal.uid}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${withdrawal.phone || 'N/A'}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9; text-align:right;">KES ${Number(withdrawal.amount || 0).toFixed(2)}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9; text-align:right;">KES ${Number(withdrawal.tax || 0).toFixed(2)}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9; text-align:right;">KES ${Number(withdrawal.net || 0).toFixed(2)}</td>
+          <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${statusBadge(normalizeWithdrawalStatus(withdrawal.status))}</td>
+        </tr>
+      `).join('');
     }
 
     async function approveRecharge(id, uid, amount) {
@@ -249,54 +397,55 @@
       document.getElementById('withdrawalList').appendChild(card);
     }
 
-    async function loadRecharges() {
+    function loadRecharges(recharges) {
       const listBox = document.getElementById("rechargeList");
-      listBox.innerHTML = "<p>Loading recharge requests...</p>";
+      listBox.innerHTML = "";
 
-      try {
-        const recharges = await fetchPendingRecharges();
-        listBox.innerHTML = "";
-
-        if (!recharges.length) {
-          listBox.innerHTML = "<p>No pending recharges found.</p>";
-        } else {
-          recharges.forEach(renderRechargeCard);
-        }
-      } catch (err) {
-        if (String(err.message).includes('unauthorized')) {
-          clearAdminSession();
-          showMessage('Session expired. Please log in again.', true);
-        } else {
-          showMessage('Failed to load recharge records.', true);
-        }
+      const pendingRecharges = recharges.filter((item) => normalizeRechargeStatus(item.status) === 'pending');
+      if (!pendingRecharges.length) {
+        listBox.innerHTML = "<p>No pending recharges found.</p>";
+        return;
       }
+
+      pendingRecharges.forEach(renderRechargeCard);
     }
 
-    async function loadWithdrawals() {
+    function loadWithdrawals(withdrawals) {
       const listBox = document.getElementById('withdrawalList');
-      listBox.innerHTML = '<p>Loading withdrawal requests...</p>';
+      listBox.innerHTML = '';
 
-      try {
-        const withdrawals = await fetchPendingWithdrawals();
-        listBox.innerHTML = '';
-
-        if (!withdrawals.length) {
-          listBox.innerHTML = '<p>No pending withdrawals found.</p>';
-        } else {
-          withdrawals.forEach(renderWithdrawalCard);
-        }
-      } catch (err) {
-        if (String(err.message).includes('unauthorized')) {
-          clearAdminSession();
-          showMessage('Session expired. Please log in again.', true);
-        } else {
-          showMessage('Failed to load withdrawal records.', true);
-        }
+      const pendingWithdrawals = withdrawals.filter((item) => normalizeWithdrawalStatus(item.status) === 'pending');
+      if (!pendingWithdrawals.length) {
+        listBox.innerHTML = '<p>No pending withdrawals found.</p>';
+        return;
       }
+
+      pendingWithdrawals.forEach(renderWithdrawalCard);
     }
 
     async function loadAllAdminData() {
-      await Promise.all([loadRecharges(), loadWithdrawals()]);
+      document.getElementById('rechargeList').innerHTML = '<p>Loading recharge requests...</p>';
+      document.getElementById('withdrawalList').innerHTML = '<p>Loading withdrawal requests...</p>';
+
+      try {
+        const [recharges, withdrawals] = await Promise.all([
+          fetchWithAdminToken('/api/admin/recharges'),
+          fetchWithAdminToken('/api/admin/withdrawals')
+        ]);
+
+        updateCounts(recharges, withdrawals);
+        loadRecharges(recharges);
+        loadWithdrawals(withdrawals);
+        renderAllRechargesTable(recharges);
+        renderAllWithdrawalsTable(withdrawals);
+      } catch (err) {
+        if (String(err.message).includes('unauthorized')) {
+          clearAdminSession();
+          showMessage('Session expired. Please log in again.', true);
+        } else {
+          showMessage('Failed to load admin tables.', true);
+        }
+      }
     }
 
     document.getElementById('adminLoginBtn').addEventListener('click', adminLogin);
