@@ -10,6 +10,7 @@
 <body>
   <header>
     <h1>TUST VANILLA Admin</h1>
+    <button id="adminLogoutBtn" type="button" style="display:none; max-width:120px;">Logout</button>
   </header>
 
   <div class="container">
@@ -32,6 +33,11 @@
       <div id="rechargeList" class="recharge-list">
         <p>Loading recharge requests...</p>
       </div>
+
+      <h2 style="margin:1rem 0 0.75rem;">Pending Withdrawals</h2>
+      <div id="withdrawalList" class="recharge-list">
+        <p>Loading withdrawal requests...</p>
+      </div>
     </div>
   </div>
 
@@ -39,9 +45,32 @@
     const apiUrl = window.location.hostname === 'localhost'
       ? window.location.origin
       : 'https://investmentplatform.onrender.com';
+    let adminPollTimer = null;
 
     function getAdminToken() {
       return localStorage.getItem('tv_admin_token') || '';
+    }
+
+    function setAdminAuthUi(isLoggedIn) {
+      document.getElementById('adminLoginCard').style.display = isLoggedIn ? 'none' : 'block';
+      document.getElementById('adminPanel').style.display = isLoggedIn ? 'block' : 'none';
+      document.getElementById('adminLogoutBtn').style.display = isLoggedIn ? 'inline-flex' : 'none';
+    }
+
+    function clearAdminSession() {
+      localStorage.removeItem('tv_admin_token');
+      if (adminPollTimer) {
+        clearInterval(adminPollTimer);
+        adminPollTimer = null;
+      }
+      setAdminAuthUi(false);
+    }
+
+    function startAdminPolling() {
+      if (adminPollTimer) {
+        clearInterval(adminPollTimer);
+      }
+      adminPollTimer = setInterval(loadAllAdminData, 10000);
     }
 
     function showMessage(text, isError = false) {
@@ -73,9 +102,10 @@
         }
 
         localStorage.setItem('tv_admin_token', data.token);
-        document.getElementById('adminLoginCard').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'block';
-        await loadRecharges();
+        setAdminAuthUi(true);
+        await loadAllAdminData();
+        startAdminPolling();
+        showMessage('Login successful. Admin panel ready.');
       } catch (err) {
         showMessage('Failed to connect to server.', true);
       }
@@ -83,6 +113,16 @@
 
     async function fetchPendingRecharges() {
       const res = await fetch(`${apiUrl}/api/admin/recharges/pending`, {
+        headers: { 'x-admin-token': getAdminToken() }
+      });
+      if (res.status === 401) {
+        throw new Error('unauthorized');
+      }
+      return await res.json();
+    }
+
+    async function fetchPendingWithdrawals() {
+      const res = await fetch(`${apiUrl}/api/admin/withdrawals/pending`, {
         headers: { 'x-admin-token': getAdminToken() }
       });
       if (res.status === 401) {
@@ -104,7 +144,13 @@
         body: JSON.stringify({ uid, amount })
       });
 
-      if (res.ok) loadRecharges();
+      if (res.ok) {
+        showMessage('Recharge approved successfully.');
+        loadAllAdminData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showMessage(data.message || 'Failed to approve recharge.', true);
+      }
     }
 
     async function rejectRecharge(id) {
@@ -116,7 +162,49 @@
         headers: { 'x-admin-token': getAdminToken() }
       });
 
-      if (res.ok) loadRecharges();
+      if (res.ok) {
+        showMessage('Recharge rejected successfully.');
+        loadAllAdminData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showMessage(data.message || 'Failed to reject recharge.', true);
+      }
+    }
+
+    async function approveWithdrawal(id) {
+      const confirmAction = confirm('Approve this withdrawal?');
+      if (!confirmAction) return;
+
+      const res = await fetch(`${apiUrl}/api/admin/withdrawals/${id}/approve`, {
+        method: 'POST',
+        headers: { 'x-admin-token': getAdminToken() }
+      });
+
+      if (res.ok) {
+        showMessage('Withdrawal approved successfully.');
+        loadAllAdminData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showMessage(data.message || 'Failed to approve withdrawal.', true);
+      }
+    }
+
+    async function rejectWithdrawal(id) {
+      const confirmAction = confirm('Reject this withdrawal? Funds will be refunded to user wallet.');
+      if (!confirmAction) return;
+
+      const res = await fetch(`${apiUrl}/api/admin/withdrawals/${id}/reject`, {
+        method: 'PATCH',
+        headers: { 'x-admin-token': getAdminToken() }
+      });
+
+      if (res.ok) {
+        showMessage('Withdrawal rejected and refunded.');
+        loadAllAdminData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showMessage(data.message || 'Failed to reject withdrawal.', true);
+      }
     }
 
     function renderRechargeCard(recharge) {
@@ -140,6 +228,27 @@
       document.getElementById("rechargeList").appendChild(card);
     }
 
+    function renderWithdrawalCard(withdrawal) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const date = new Date(withdrawal.createdAt).toLocaleString();
+
+      card.innerHTML = `
+        <p><strong>User ID:</strong> ${withdrawal.uid}</p>
+        <p><strong>Phone:</strong> ${withdrawal.phone || 'N/A'}</p>
+        <p><strong>Amount:</strong> KES ${Number(withdrawal.amount || 0).toFixed(2)}</p>
+        <p><strong>Tax:</strong> KES ${Number(withdrawal.tax || 0).toFixed(2)}</p>
+        <p><strong>Net:</strong> KES ${Number(withdrawal.net || 0).toFixed(2)}</p>
+        <p class="timestamp"><strong>Date:</strong> ${date}</p>
+        <div class="actions">
+          <button class="approve" onclick="approveWithdrawal('${withdrawal._id}')">Approve</button>
+          <button class="reject" onclick="rejectWithdrawal('${withdrawal._id}')">Reject</button>
+        </div>
+      `;
+
+      document.getElementById('withdrawalList').appendChild(card);
+    }
+
     async function loadRecharges() {
       const listBox = document.getElementById("rechargeList");
       listBox.innerHTML = "<p>Loading recharge requests...</p>";
@@ -155,9 +264,7 @@
         }
       } catch (err) {
         if (String(err.message).includes('unauthorized')) {
-          localStorage.removeItem('tv_admin_token');
-          document.getElementById('adminPanel').style.display = 'none';
-          document.getElementById('adminLoginCard').style.display = 'block';
+          clearAdminSession();
           showMessage('Session expired. Please log in again.', true);
         } else {
           showMessage('Failed to load recharge records.', true);
@@ -165,12 +272,50 @@
       }
     }
 
+    async function loadWithdrawals() {
+      const listBox = document.getElementById('withdrawalList');
+      listBox.innerHTML = '<p>Loading withdrawal requests...</p>';
+
+      try {
+        const withdrawals = await fetchPendingWithdrawals();
+        listBox.innerHTML = '';
+
+        if (!withdrawals.length) {
+          listBox.innerHTML = '<p>No pending withdrawals found.</p>';
+        } else {
+          withdrawals.forEach(renderWithdrawalCard);
+        }
+      } catch (err) {
+        if (String(err.message).includes('unauthorized')) {
+          clearAdminSession();
+          showMessage('Session expired. Please log in again.', true);
+        } else {
+          showMessage('Failed to load withdrawal records.', true);
+        }
+      }
+    }
+
+    async function loadAllAdminData() {
+      await Promise.all([loadRecharges(), loadWithdrawals()]);
+    }
+
     document.getElementById('adminLoginBtn').addEventListener('click', adminLogin);
+    document.getElementById('adminPassword').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        adminLogin();
+      }
+    });
+    document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+      clearAdminSession();
+      showMessage('Logged out.');
+    });
     window.onload = async () => {
       if (getAdminToken()) {
-        document.getElementById('adminLoginCard').style.display = 'none';
-        document.getElementById('adminPanel').style.display = 'block';
-        await loadRecharges();
+        setAdminAuthUi(true);
+        await loadAllAdminData();
+        startAdminPolling();
+      } else {
+        setAdminAuthUi(false);
       }
     };
   </script>

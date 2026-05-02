@@ -45,6 +45,15 @@ router.get('/recharges/pending', async (req, res) => {
   }
 });
 
+router.get('/withdrawals/pending', async (req, res) => {
+  try {
+    const withdrawals = await Withdrawal.find({ status: 'pending' }).sort({ createdAt: -1 });
+    res.json(withdrawals);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch pending withdrawals' });
+  }
+});
+
 router.post('/recharge/:id/approve', async (req, res) => {
   try {
     const recharge = await Recharge.findById(req.params.id);
@@ -109,6 +118,27 @@ router.post('/approve-withdrawal/:id', async (req, res) => {
     res.json({ message: 'Withdrawal approved', withdrawal });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/withdrawals/:id/approve
+router.post('/withdrawals/:id/approve', async (req, res) => {
+  try {
+    const withdrawal = await Withdrawal.findById(req.params.id);
+    if (!withdrawal) {
+      return res.status(404).json({ message: 'Withdrawal not found' });
+    }
+
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ message: 'Already processed' });
+    }
+
+    withdrawal.status = 'approved';
+    await withdrawal.save();
+
+    res.json({ message: 'Withdrawal approved', withdrawal });
+  } catch (err) {
+    res.status(500).json({ message: 'Error approving withdrawal' });
   }
 });
 

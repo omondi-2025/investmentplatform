@@ -1,7 +1,7 @@
 // nav.js — Injects the persistent bottom navigation bar on every page.
 // Include this script at the bottom of every user-facing page.
 (function () {
-  var excludedPages = ["login.html", "signup.html"];
+  var excludedPages = ["login.html", "signup.html", "admin.html"];
   var currentPage = window.location.pathname.split("/").pop() || "index.html";
 
   if (excludedPages.includes(currentPage)) {
