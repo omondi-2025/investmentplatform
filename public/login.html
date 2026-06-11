@@ -6,71 +6,53 @@
 	<title>TUST VANILLA - Login</title>
 	<link rel="stylesheet" href="styles.css" />
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-	<style>
-		body {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			min-height: 100vh;
-			margin: 0;
-			padding: 1rem;
-			background: linear-gradient(160deg, #e8f0fe 0%, #f0f4f9 100%);
-		}
-
-		.wrap {
-			width: 100%;
-			max-width: 420px;
-		}
-
-		.brand {
-			text-align: center;
-			color: var(--primary);
-			margin-bottom: 1rem;
-			font-size: 1.7rem;
-			font-weight: 900;
-			letter-spacing: 0.8px;
-		}
-
-		.switch {
-			margin-top: 1rem;
-			text-align: center;
-			color: var(--text-2);
-			font-size: 0.9rem;
-		}
-
-		.switch a {
-			color: var(--primary);
-			text-decoration: none;
-			font-weight: 700;
-		}
-	</style>
 </head>
-<body>
-	<div class="wrap">
-		<div class="brand">TUST VANILLA</div>
+<body class="auth-page">
+	<div class="auth-wrap">
+		<div class="auth-brand">TUST VANILLA</div>
 		<div class="login-box">
 			<form id="loginForm">
 				<div class="form-group">
 					<label for="email">Email</label>
-					<input type="email" id="email" required placeholder="you@example.com" />
+					<div class="input-wrap">
+						<span class="material-symbols-outlined input-icon">mail</span>
+						<input type="email" id="email" required placeholder="you@example.com" autocomplete="email" />
+					</div>
 				</div>
 
 				<div class="form-group">
 					<label for="password">Password</label>
-					<input type="password" id="password" required placeholder="Enter your password" />
+					<div class="input-wrap password-wrap">
+						<span class="material-symbols-outlined input-icon">lock</span>
+						<input type="password" id="password" required placeholder="Enter your password" autocomplete="current-password" />
+						<button type="button" class="toggle-password" aria-label="Show password" data-target="password">
+							<span class="material-symbols-outlined">visibility</span>
+						</button>
+					</div>
 				</div>
 
 				<button type="submit">Login</button>
 				<div id="loginMessage"></div>
 			</form>
 
-			<div class="switch">
+			<div class="auth-switch">
 				Don't have an account? <a id="signupLink" href="signup.html">Sign up</a>
 			</div>
 		</div>
 	</div>
 
 	<script>
+		document.querySelectorAll(".toggle-password").forEach(function (btn) {
+			btn.addEventListener("click", function () {
+				var input = document.getElementById(btn.dataset.target);
+				var icon = btn.querySelector(".material-symbols-outlined");
+				var isHidden = input.type === "password";
+				input.type = isHidden ? "text" : "password";
+				icon.textContent = isHidden ? "visibility_off" : "visibility";
+				btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+			});
+		});
+
 		const loginForm = document.getElementById("loginForm");
 		const loginMessage = document.getElementById("loginMessage");
 		const signupLink = document.getElementById("signupLink");
@@ -129,8 +111,3 @@
 	<script src="nav.js"></script>
 </body>
 </html>
-
-
-
-
-

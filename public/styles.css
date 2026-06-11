@@ -329,6 +329,51 @@ ul#historyList li {
 .support-modal a:hover { color: #90cdf4; }
 
 /*  Login / Signup  */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 1rem;
+  background: linear-gradient(160deg, #e8f0fe 0%, #f0f4f9 100%);
+}
+
+.auth-wrap {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-brand {
+  text-align: center;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+
+.auth-title {
+  text-align: center;
+  color: var(--primary);
+  margin-bottom: 1.25rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
+.auth-switch a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
 .login-box, .signup-box {
   background: var(--surface);
   padding: 2rem 1.5rem;
@@ -336,6 +381,78 @@ ul#historyList li {
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 420px;
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap .input-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 20px;
+  color: var(--text-light);
+  pointer-events: none;
+  z-index: 1;
+  line-height: 1;
+}
+
+.input-wrap input {
+  width: 100%;
+  padding: 0.85rem 1rem 0.85rem 2.85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.97rem;
+  font-family: inherit;
+  background: var(--surface-2);
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  outline: none;
+}
+
+.input-wrap input::placeholder {
+  color: var(--text-light);
+}
+
+.input-wrap input:focus {
+  border-color: var(--primary-light);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.12);
+}
+
+.input-wrap.password-wrap input {
+  padding-right: 2.85rem;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-light);
+  cursor: pointer;
+  box-shadow: none;
+  transform: none;
+}
+
+.toggle-password:hover {
+  color: var(--primary);
+  background: var(--primary-bg);
+  box-shadow: none;
+  transform: none;
+}
+
+.toggle-password .material-symbols-outlined {
+  font-size: 20px;
 }
 
 /*  Profile image  */
