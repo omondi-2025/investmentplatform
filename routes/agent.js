@@ -4,6 +4,14 @@ const User = require('../models/User');
 const Withdrawal = require('../models/Withdrawal');
 const { requireAuth } = require('../middleware/auth');
 
+function calculateReferralEarnings(referrals) {
+  return (referrals || []).reduce((sum, entry) => {
+    const invested = Number(entry.amount || 0);
+    const rate = Number(entry.level) === 1 ? 0.2 : 0.01;
+    return sum + invested * rate;
+  }, 0);
+}
+
 // GET /api/agent/dashboard/:refCode
 router.get("/dashboard/:refCode", requireAuth, async (req, res) => {
   try {
@@ -19,22 +27,32 @@ router.get("/dashboard/:refCode", requireAuth, async (req, res) => {
     }
 
     const userId = user._id;
-    const totalReferrals = await User.countDocuments({ referredBy: user.referralCode });
-    const totalEarnings = (user.referrals || []).reduce((sum, r) => {
-      const rate = r.level === 1 ? 0.2 : 0.01;
-      return sum + Number((r.amount || 0) * rate);
-    }, 0);
+    const referralCode = user.referralCode;
 
-    const totalWithdrawn = await Withdrawal.aggregate([
-      { $match: { uid: userId } },
-      { $group: { _id: null, total: { $sum: "$amount" } } }
+    const [totalReferrals, withdrawnAgg] = await Promise.all([
+      User.countDocuments({ referredBy: referralCode }),
+      Withdrawal.aggregate([
+        {
+          $match: {
+            uid: userId,
+            status: { $in: ['approved', 'paid'] }
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ])
     ]);
+
+    const totalEarnings = calculateReferralEarnings(user.referrals);
+    const totalWithdrawn = Number(withdrawnAgg[0]?.total || 0);
+    const walletBalance = Number(user.wallet || 0);
 
     res.json({
       success: true,
       totalReferrals,
       totalEarnings,
-      totalWithdrawn: totalWithdrawn[0]?.total || 0
+      totalWithdrawn,
+      walletBalance,
+      cashouts: Number(user.cashouts || 0)
     });
   } catch (err) {
     console.error("Agent dashboard error:", err);

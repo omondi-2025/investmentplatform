@@ -107,7 +107,8 @@ async function fetchReferrals() {
       countInfo.innerHTML = `<strong>Total Referrals (Level ${level}):</strong> ${levelReferrals.length}`;
       container.appendChild(countInfo);
 
-      const totalBonus = levelReferrals.reduce((sum, r) => sum + r.amount, 0);
+      const bonusRate = level === 1 ? 0.2 : 0.01;
+      const totalBonus = levelReferrals.reduce((sum, r) => sum + Number(r.amount || 0) * bonusRate, 0);
       const bonusInfo = document.createElement("p");
       bonusInfo.innerHTML = `<strong>Total Bonus Earned:</strong> KES ${totalBonus.toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
       container.appendChild(bonusInfo);
@@ -119,7 +120,8 @@ async function fetchReferrals() {
         div.className = "referral-card";
         div.innerHTML = `
           <p><strong>Email:</strong> ${ref.email}</p>
-          <p><strong>Amount:</strong> KES ${ref.amount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</p>
+          <p><strong>Invested:</strong> KES ${Number(ref.amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</p>
+          <p><strong>Your Bonus:</strong> KES ${(Number(ref.amount || 0) * bonusRate).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</p>
           <p><strong>Date:</strong> ${new Date(ref.date).toLocaleDateString()}</p>
         `;
         container.appendChild(div);

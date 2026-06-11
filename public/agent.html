@@ -192,37 +192,47 @@
 </div>
 
   <script>
+  function formatMoney(value) {
+    return Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   async function loadAgentData() {
-    const userData = JSON.parse(localStorage.getItem("tc_user"));
+    const userData = API.getStoredUser();
     if (!userData || !userData._id || !userData.referralCode) {
       return location.href = "login.html";
     }
 
-    document.getElementById("agentName").textContent = userData.fullName;
+    document.getElementById("agentName").textContent = userData.fullName || "Agent";
 
-    // Generate the referral URL
-    const referralUrl = `https://investmentplatform-three.vercel.app/signup.html?ref=${userData.referralCode}`;
+    const signupBase = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
+      ? window.location.origin
+      : "https://investmentplatform-three.vercel.app";
+    const referralUrl = `${signupBase}/signup.html?ref=${encodeURIComponent(userData.referralCode)}`;
     document.getElementById("referralLink").value = referralUrl;
     document.getElementById("referralLink2").value = referralUrl;
 
     try {
-      const baseUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-        ? window.location.origin
-        : "https://investmentplatform.onrender.com";
       const res = await API.apiFetch(`/api/agent/dashboard/${userData.referralCode}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch agent data");
-      }
       const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to fetch agent data");
+      }
 
-      // Display data in the UI
-      document.getElementById("totalReferrals").textContent = data.totalReferrals;
-      document.getElementById("totalEarnings").textContent = data.totalEarnings.toFixed(2);
-      document.getElementById("totalWithdrawn").textContent = data.totalWithdrawn.toFixed(2);
-      document.getElementById("agentBalance").textContent = (data.totalEarnings - data.totalWithdrawn).toFixed(2);
+      document.getElementById("totalReferrals").textContent = String(data.totalReferrals || 0);
+      document.getElementById("totalEarnings").textContent = formatMoney(data.totalEarnings);
+      document.getElementById("totalWithdrawn").textContent = formatMoney(data.totalWithdrawn);
+      document.getElementById("agentBalance").textContent = formatMoney(data.walletBalance);
+
+      if (data.walletBalance !== undefined) {
+        API.setSession(
+          Object.assign({}, userData, { wallet: data.walletBalance, cashouts: data.cashouts }),
+          API.getToken(),
+          API.isRememberMeEnabled()
+        );
+      }
     } catch (err) {
       console.error("Failed to load agent data:", err);
-      alert(" Could not load dashboard data. Please check your internet or try again later.");
+      alert("Could not load dashboard data. Please check your internet or try again later.");
     }
   }
 
