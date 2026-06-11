@@ -1,8 +1,9 @@
-const CACHE_NAME = "tust-vanilla-cache-v2";
+const CACHE_NAME = "tust-vanilla-cache-v3";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
-  "/avatar-selfie.svg"
+  "/tust-vanilla-icon-192.png",
+  "/tust-vanilla-icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
