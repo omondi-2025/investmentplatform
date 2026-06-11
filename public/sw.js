@@ -1,4 +1,4 @@
-const CACHE_NAME = "tust-vanilla-cache-v4";
+const CACHE_NAME = "tust-vanilla-cache-v5";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",

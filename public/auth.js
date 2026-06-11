@@ -98,7 +98,7 @@ async function loginUser(email, password) {
 
 function logoutUser(message = null) {
   if (window.API && window.API.clearSession) {
-    window.API.clearSession();
+    window.API.clearSession({ keepRememberPrefs: true });
   } else {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
