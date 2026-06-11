@@ -1,176 +1,356 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>TUST VANILLA - Sign Up</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-</head>
-<body class="auth-page">
-
-  <div class="auth-wrap">
-    <div class="auth-brand">TUST VANILLA</div>
-    <div class="signup-box">
-      <h2 class="auth-title">Create Account</h2>
-      <form id="signupForm">
-        <div class="form-group">
-          <label for="fullName">Full Name</label>
-          <div class="input-wrap">
-            <span class="material-symbols-outlined input-icon">person</span>
-            <input type="text" id="fullName" required placeholder="Your full name" autocomplete="name" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="phone">Phone Number</label>
-          <div class="input-wrap">
-            <span class="material-symbols-outlined input-icon">phone</span>
-            <input type="tel" id="phone" required placeholder="e.g. 0712345678" autocomplete="tel" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="email">Email</label>
-          <div class="input-wrap">
-            <span class="material-symbols-outlined input-icon">mail</span>
-            <input type="email" id="email" required placeholder="you@example.com" autocomplete="email" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="password">Password</label>
-          <div class="input-wrap password-wrap">
-            <span class="material-symbols-outlined input-icon">lock</span>
-            <input type="password" id="password" required minlength="6" placeholder="Minimum 6 characters" autocomplete="new-password" />
-            <button type="button" class="toggle-password" aria-label="Show password" data-target="password">
-              <span class="material-symbols-outlined">visibility</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="confirmPassword">Confirm Password</label>
-          <div class="input-wrap password-wrap">
-            <span class="material-symbols-outlined input-icon">lock_reset</span>
-            <input type="password" id="confirmPassword" required minlength="6" placeholder="Re-enter your password" autocomplete="new-password" />
-            <button type="button" class="toggle-password" aria-label="Show password" data-target="confirmPassword">
-              <span class="material-symbols-outlined">visibility</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="referralCode">Referral Code (optional)</label>
-          <div class="input-wrap">
-            <span class="material-symbols-outlined input-icon">redeem</span>
-            <input type="text" id="referralCode" placeholder="Enter referral code" />
-          </div>
-        </div>
-
-        <button type="submit">Sign Up</button>
-        <div id="signupMessage"></div>
-      </form>
-
-      <div class="auth-switch">
-        Already have an account? <a id="loginLink" href="login.html">Login</a>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    document.querySelectorAll(".toggle-password").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var input = document.getElementById(btn.dataset.target);
-        var icon = btn.querySelector(".material-symbols-outlined");
-        var isHidden = input.type === "password";
-        input.type = isHidden ? "text" : "password";
-        icon.textContent = isHidden ? "visibility_off" : "visibility";
-        btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
-      });
-    });
-
-    const signupForm = document.getElementById("signupForm");
-    const signupMessage = document.getElementById("signupMessage");
-    const loginLink = document.getElementById("loginLink");
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const refCode = urlParams.get("ref");
-    if (refCode) {
-      const referralInput = document.getElementById("referralCode");
-      if (referralInput) referralInput.value = refCode;
-    }
-    if (refCode) loginLink.href = `login.html?ref=${refCode}`;
-
-    signupForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const fullName = document.getElementById("fullName").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const email = document.getElementById("email").value.trim().toLowerCase();
-      const password = document.getElementById("password").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
-      const referredBy = document.getElementById("referralCode").value.trim() || refCode;
-
-      signupMessage.textContent = "";
-      signupMessage.className = "";
-
-      if (password !== confirmPassword) {
-        signupMessage.textContent = "Passwords do not match.";
-        signupMessage.className = "alert error";
-        return;
-      }
-
-      if (!/^0(1|7)\d{8}$/.test(phone)) {
-        signupMessage.textContent = "Invalid Kenyan phone number.";
-        signupMessage.className = "alert error";
-        return;
-      }
-
-      const submitBtn = signupForm.querySelector("button[type='submit']");
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Creating account...";
-
-      try {
-        const baseUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-          ? window.location.origin
-          : "https://investmentplatform.onrender.com";
-        const res = await fetch(`${baseUrl}/api/signup`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            fullName,
-            phone,
-            email,
-            password,
-            refCode: referredBy
-          })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.success) {
-          localStorage.setItem("tc_user", JSON.stringify(data.user));
-          signupMessage.textContent = "Signup successful!";
-          signupMessage.className = "alert success";
-          setTimeout(() => window.location.href = "index.html", 1500);
-        } else {
-          signupMessage.textContent = data.message || "Signup failed.";
-          signupMessage.className = "alert error";
-          submitBtn.disabled = false;
-          submitBtn.textContent = "Sign Up";
-        }
-      } catch (err) {
-        console.error("Signup error:", err);
-        signupMessage.textContent = "Server error. Try again.";
-        signupMessage.className = "alert error";
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Sign Up";
-      }
-    });
-  </script>
-  <script src="nav.js"></script>
-</body>
-</html>
+﻿<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+  <title>TUST VANILLA - Sign Up</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+</head>
+
+<body class="auth-page">
+
+
+
+  <div class="auth-wrap">
+
+    <div class="auth-logo">
+      <img src="tust-vanilla-logo.png" alt="TUST VANILLA logo" width="72" height="72" />
+      <div class="auth-brand">TUST VANILLA</div>
+      <div class="auth-tagline">Invest. Grow. Earn.</div>
+    </div>
+
+    <div class="signup-box">
+
+      <h2 class="auth-title">Create Account</h2>
+
+      <form id="signupForm">
+
+        <div class="form-group">
+
+          <label for="fullName">Full Name</label>
+
+          <div class="input-wrap">
+
+            <span class="material-symbols-outlined input-icon">person</span>
+
+            <input type="text" id="fullName" required placeholder="Your full name" autocomplete="name" />
+
+          </div>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label for="phone">Phone Number</label>
+
+          <div class="input-wrap">
+
+            <span class="material-symbols-outlined input-icon">phone</span>
+
+            <input type="tel" id="phone" required placeholder="e.g. 0712345678" autocomplete="tel" />
+
+          </div>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label for="email">Email</label>
+
+          <div class="input-wrap">
+
+            <span class="material-symbols-outlined input-icon">mail</span>
+
+            <input type="email" id="email" required placeholder="you@example.com" autocomplete="email" />
+
+          </div>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label for="password">Password</label>
+
+          <div class="input-wrap password-wrap">
+
+            <span class="material-symbols-outlined input-icon">lock</span>
+
+            <input type="password" id="password" required minlength="6" placeholder="Minimum 6 characters" autocomplete="new-password" />
+
+            <button type="button" class="toggle-password" aria-label="Show password" data-target="password">
+
+              <span class="material-symbols-outlined">visibility</span>
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label for="confirmPassword">Confirm Password</label>
+
+          <div class="input-wrap password-wrap">
+
+            <span class="material-symbols-outlined input-icon">lock_reset</span>
+
+            <input type="password" id="confirmPassword" required minlength="6" placeholder="Re-enter your password" autocomplete="new-password" />
+
+            <button type="button" class="toggle-password" aria-label="Show password" data-target="confirmPassword">
+
+              <span class="material-symbols-outlined">visibility</span>
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="form-group">
+
+          <label for="referralCode">Referral Code (optional)</label>
+
+          <div class="input-wrap">
+
+            <span class="material-symbols-outlined input-icon">redeem</span>
+
+            <input type="text" id="referralCode" placeholder="Enter referral code" />
+
+          </div>
+
+        </div>
+
+
+
+        <button type="submit">Sign Up</button>
+
+        <div id="signupMessage"></div>
+
+      </form>
+
+
+
+      <div class="auth-switch">
+
+        Already have an account? <a id="loginLink" href="login.html">Login</a>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <script>
+
+    document.querySelectorAll(".toggle-password").forEach(function (btn) {
+
+      btn.addEventListener("click", function () {
+
+        var input = document.getElementById(btn.dataset.target);
+
+        var icon = btn.querySelector(".material-symbols-outlined");
+
+        var isHidden = input.type === "password";
+
+        input.type = isHidden ? "text" : "password";
+
+        icon.textContent = isHidden ? "visibility_off" : "visibility";
+
+        btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+
+      });
+
+    });
+
+
+
+    const signupForm = document.getElementById("signupForm");
+
+    const signupMessage = document.getElementById("signupMessage");
+
+    const loginLink = document.getElementById("loginLink");
+
+
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const refCode = urlParams.get("ref");
+
+    if (refCode) {
+
+      const referralInput = document.getElementById("referralCode");
+
+      if (referralInput) referralInput.value = refCode;
+
+    }
+
+    if (refCode) loginLink.href = `login.html?ref=${refCode}`;
+
+
+
+    signupForm.addEventListener("submit", async (e) => {
+
+      e.preventDefault();
+
+
+
+      const fullName = document.getElementById("fullName").value.trim();
+
+      const phone = document.getElementById("phone").value.trim();
+
+      const email = document.getElementById("email").value.trim().toLowerCase();
+
+      const password = document.getElementById("password").value;
+
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      const referredBy = document.getElementById("referralCode").value.trim() || refCode;
+
+
+
+      signupMessage.textContent = "";
+
+      signupMessage.className = "";
+
+
+
+      if (password !== confirmPassword) {
+
+        signupMessage.textContent = "Passwords do not match.";
+
+        signupMessage.className = "alert error";
+
+        return;
+
+      }
+
+
+
+      if (!/^0(1|7)\d{8}$/.test(phone)) {
+
+        signupMessage.textContent = "Invalid Kenyan phone number.";
+
+        signupMessage.className = "alert error";
+
+        return;
+
+      }
+
+
+
+      const submitBtn = signupForm.querySelector("button[type='submit']");
+
+      submitBtn.disabled = true;
+
+      submitBtn.textContent = "Creating account...";
+
+
+
+      try {
+
+        const baseUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+
+          ? window.location.origin
+
+          : "https://investmentplatform.onrender.com";
+
+        const res = await fetch(`${baseUrl}/api/signup`, {
+
+          method: "POST",
+
+          headers: {
+
+            "Content-Type": "application/json"
+
+          },
+
+          body: JSON.stringify({
+
+            fullName,
+
+            phone,
+
+            email,
+
+            password,
+
+            refCode: referredBy
+
+          })
+
+        });
+
+
+
+        const data = await res.json();
+
+
+
+        if (res.ok && data.success) {
+
+          localStorage.setItem("tc_user", JSON.stringify(data.user));
+
+          signupMessage.textContent = "Signup successful!";
+
+          signupMessage.className = "alert success";
+
+          setTimeout(() => window.location.href = "index.html", 1500);
+
+        } else {
+
+          signupMessage.textContent = data.message || "Signup failed.";
+
+          signupMessage.className = "alert error";
+
+          submitBtn.disabled = false;
+
+          submitBtn.textContent = "Sign Up";
+
+        }
+
+      } catch (err) {
+
+        console.error("Signup error:", err);
+
+        signupMessage.textContent = "Server error. Try again.";
+
+        signupMessage.className = "alert error";
+
+        submitBtn.disabled = false;
+
+        submitBtn.textContent = "Sign Up";
+
+      }
+
+    });
+
+  </script>
+
+  <script src="nav.js"></script>
+
+</body>
+
+</html>
+

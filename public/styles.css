@@ -234,6 +234,107 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
   border-bottom: 2px solid var(--primary-bg);
 }
 
+/*  Live activity feed  */
+.activity-feed {
+  margin: 0 1rem 1rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.activity-feed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  animation: livePulse 1.8s ease-out infinite;
+}
+
+@keyframes livePulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.activity-ticker {
+  height: 138px;
+  overflow: hidden;
+  position: relative;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+
+.activity-track {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  will-change: transform;
+}
+
+.activity-track.scrolling {
+  animation: activityScroll var(--scroll-duration, 40s) linear infinite;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  flex-shrink: 0;
+}
+
+.activity-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activity-icon .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.activity-text {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.activity-text strong {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.activity-text .amount {
+  color: var(--success);
+  font-weight: 700;
+}
+
+@keyframes activityScroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
 /*  Package cards  */
 .package-card {
   background: var(--surface);
@@ -344,13 +445,38 @@ ul#historyList li {
   max-width: 420px;
 }
 
+.auth-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.auth-logo img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0, 74, 173, 0.18);
+}
+
 .auth-brand {
   text-align: center;
   color: var(--primary);
-  margin-bottom: 1rem;
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 900;
-  letter-spacing: 0.8px;
+  letter-spacing: 1.2px;
+  line-height: 1.2;
+}
+
+.auth-tagline {
+  text-align: center;
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: -0.35rem;
+  margin-bottom: 0.25rem;
 }
 
 .auth-title {

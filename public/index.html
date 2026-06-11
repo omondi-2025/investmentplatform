@@ -36,6 +36,16 @@
     </div>
   </div>
 
+  <div class="activity-feed">
+    <div class="activity-feed-header">
+      <span class="live-dot"></span>
+      Live Activity
+    </div>
+    <div class="activity-ticker">
+      <div class="activity-track" id="activityTrack"></div>
+    </div>
+  </div>
+
   <div class="card" style="margin:0 1rem 1rem;">
     <div class="section-title">Quick Access</div>
     <div class="grid-buttons">
@@ -59,6 +69,71 @@
 
   <script src="nav.js"></script>
   <script>
+    (function initLiveActivity() {
+      var amounts = [300, 500, 900, 1500, 2000, 2500, 3500, 4200, 5480, 6000, 7500, 10000, 13300, 15000, 20000, 26600];
+      var packages = ["KES 300", "KES 500", "KES 900", "KES 1,700", "KES 5,000", "KES 10,000"];
+
+      function randomPhone() {
+        var prefix = Math.random() > 0.25 ? "07" : "01";
+        var digits = "";
+        for (var i = 0; i < 8; i++) digits += Math.floor(Math.random() * 10);
+        return prefix + digits;
+      }
+
+      function pick(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function maskPhone(phone) {
+        return phone.slice(0, 4) + "****" + phone.slice(-2);
+      }
+
+      function buildActivity() {
+        var phone = randomPhone();
+        var masked = maskPhone(phone);
+        var amount = pick(amounts);
+        var templates = [
+          { icon: "payments", bg: "#fee2e2", color: "#dc2626", html: "<strong>" + masked + "</strong> has withdrawn <span class=\"amount\">KES " + amount.toLocaleString() + "</span>" },
+          { icon: "account_balance_wallet", bg: "#d1fae5", color: "#059669", html: "<strong>" + masked + "</strong> deposited <span class=\"amount\">KES " + amount.toLocaleString() + "</span> successfully" },
+          { icon: "trending_up", bg: "#e8f0fe", color: "#004aad", html: "<strong>" + masked + "</strong> invested <span class=\"amount\">KES " + amount.toLocaleString() + "</span> in " + pick(packages) + " package" },
+          { icon: "savings", bg: "#fef3c7", color: "#d97706", html: "<strong>" + masked + "</strong> earned <span class=\"amount\">KES " + Math.floor(amount * 0.2).toLocaleString() + "</span> daily returns" },
+          { icon: "group", bg: "#ede9fe", color: "#7c3aed", html: "<strong>" + masked + "</strong> received <span class=\"amount\">KES " + Math.floor(amount * 0.15).toLocaleString() + "</span> referral bonus" },
+          { icon: "person_add", bg: "#e0f2fe", color: "#0284c7", html: "<strong>" + masked + "</strong> joined TUST VANILLA successfully" },
+          { icon: "verified", bg: "#d1fae5", color: "#059669", html: "<strong>" + masked + "</strong> completed withdrawal of <span class=\"amount\">KES " + amount.toLocaleString() + "</span>" },
+          { icon: "bolt", bg: "#fff7ed", color: "#ea580c", html: "<strong>" + masked + "</strong> recharged wallet with <span class=\"amount\">KES " + amount.toLocaleString() + "</span>" }
+        ];
+        return pick(templates);
+      }
+
+      function renderActivities() {
+        var track = document.getElementById("activityTrack");
+        if (!track) return;
+
+        var items = [];
+        for (var i = 0; i < 18; i++) {
+          var activity = buildActivity();
+          items.push(
+            '<div class="activity-item">' +
+              '<div class="activity-icon" style="background:' + activity.bg + ';color:' + activity.color + '">' +
+                '<span class="material-symbols-outlined">' + activity.icon + '</span>' +
+              '</div>' +
+              '<div class="activity-text">' + activity.html + '</div>' +
+            '</div>'
+          );
+        }
+
+        track.innerHTML = items.join("") + items.join("");
+        track.classList.add("scrolling");
+        track.style.setProperty("--scroll-duration", "45s");
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", renderActivities);
+      } else {
+        renderActivities();
+      }
+    })();
+
     function logout() { localStorage.clear(); window.location.href = "login.html"; }
     function toggleSupport() {
       var box = document.getElementById("supportBox");
