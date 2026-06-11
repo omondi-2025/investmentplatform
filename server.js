@@ -4,14 +4,35 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { signToken, requireAuth, requireSelfParam } = require('./middleware/auth');
+const { createRateLimiter } = require('./middleware/rateLimit');
+const { getPackageByAmount, getPackageReturnAmount } = require('./config/packages');
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+const allowedOrigins = new Set([
+  'http://localhost:10000',
+  'http://127.0.0.1:10000',
+  'https://investmentplatform.onrender.com',
+  'https://investmentplatform-three.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean));
+
+const authLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  }
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -37,13 +58,17 @@ const payoutJob = require('./cron/investmentPayout');
 payoutJob(); // Start cron job
 const adminRoutes = require('./routes/admin');
 
-// Default Route
+// Default Route — send visitors to login; dashboard is at /index.html
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 function generateReferralCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
+  return crypto.randomBytes(4).toString('hex').toUpperCase();
+}
+
+function isValidKenyanPhone(phone) {
+  return /^0(1|7)\d{8}$/.test(String(phone || '').trim());
 }
 
 function isValidObjectId(value) {
@@ -89,26 +114,23 @@ async function createReferralCode() {
 }
 
 // Auth: Login
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", authLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
-    const lowerEmail = email.toLowerCase();
-
+    const lowerEmail = String(email).trim().toLowerCase();
     const user = await User.findOne({ email: lowerEmail });
-    if (!user) {
-      return res.status(400).json({ success: false, message: "User not found" });
+    const validPassword = user ? await verifyPassword(user, password) : false;
+
+    if (!user || !validPassword) {
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
-    const validPassword = await verifyPassword(user, password);
-    if (!validPassword) {
-      return res.status(401).json({ success: false, message: "Invalid password" });
-    }
-
-    res.json({ success: true, user: sanitizeUser(user) });
+    const token = signToken(user._id, !!rememberMe);
+    res.json({ success: true, token, user: sanitizeUser(user), rememberMe: !!rememberMe });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -116,14 +138,22 @@ app.post("/api/login", async (req, res) => {
 });
 
 // Auth: Signup
-app.post("/api/signup", async (req, res) => {
+app.post("/api/signup", authLimiter, async (req, res) => {
   try {
     const { fullName, phone, email, password, refCode, referredBy } = req.body;
     if (!fullName || !phone || !email || !password) {
       return res.status(400).json({ success: false, message: "All required fields must be filled" });
     }
 
-    const lowerEmail = email.toLowerCase();
+    if (String(password).length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+
+    if (!isValidKenyanPhone(phone)) {
+      return res.status(400).json({ success: false, message: "Invalid Kenyan phone number" });
+    }
+
+    const lowerEmail = String(email).trim().toLowerCase();
 
     // Check if user exists
     const existing = await User.findOne({ email: lowerEmail });
@@ -162,7 +192,8 @@ app.post("/api/signup", async (req, res) => {
 
     await user.save();
 
-    res.status(201).json({ success: true, message: "User registered", user: sanitizeUser(user) });
+    const token = signToken(user._id);
+    res.status(201).json({ success: true, message: "User registered", token, user: sanitizeUser(user) });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ success: false, message: "Signup failed" });
@@ -179,7 +210,7 @@ app.use('/api/withdraw', withdrawalRoutes);
 app.use('/api/admin', adminRoutes);
 
 // ✅ GET: Withdrawal history
-app.get("/api/withdrawals/:userId", async (req, res) => {
+app.get("/api/withdrawals/:userId", requireAuth, requireSelfParam('userId'), async (req, res) => {
   try {
     const userId = req.params.userId;
     if (!isValidObjectId(userId)) {
@@ -195,7 +226,7 @@ app.get("/api/withdrawals/:userId", async (req, res) => {
 });
 
 // ✅ GET: Recharge history for a user
-app.get('/api/recharges/:userId', async (req, res) => {
+app.get('/api/recharges/:userId', requireAuth, requireSelfParam('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     if (!isValidObjectId(userId)) {
@@ -287,7 +318,7 @@ async function getUnifiedHistoryPayload(userId) {
   return { notFound: false, items, totals };
 }
 
-app.get('/api/history/:userId', async (req, res) => {
+app.get('/api/history/:userId', requireAuth, requireSelfParam('userId'), async (req, res) => {
   try {
     const { userId } = req.params;
     if (!isValidObjectId(userId)) {
@@ -306,24 +337,20 @@ app.get('/api/history/:userId', async (req, res) => {
   }
 });
 
-    // Ivestment
-app.post('/api/invest', async (req, res) => {
+    // Investment
+app.post('/api/invest', requireAuth, async (req, res) => {
   try {
-    const {
-      userId,
-      planName,
-      planAmount,
-      durationDays,
-      returnAmount
-    } = req.body;
+    const userId = req.userId;
+    const pkg = getPackageByAmount(req.body.planAmount);
 
-    const amount = Number(planAmount);
-    const duration = Number(durationDays);
-    const returns = Number(returnAmount);
-
-    if ([amount, duration, returns].some(isNaN)) {
-      return res.status(400).json({ message: "Invalid investment data" });
+    if (!pkg) {
+      return res.status(400).json({ message: "Invalid investment package" });
     }
+
+    const amount = pkg.amount;
+    const duration = pkg.duration;
+    const returns = getPackageReturnAmount(pkg);
+    const planName = `KES ${amount}`;
 
    const user = await User.findById(userId);
 if (!user) return res.status(404).json({ message: "User not found" });
@@ -403,13 +430,16 @@ if (user.referredBy) {
   }
 });
   
- // routes/recharge.js or inside /api/recharge handler
-app.post('/api/recharge', async (req, res) => {
-  const { uid, message, amount, number, transactionCode } = req.body;
+app.post('/api/recharge', requireAuth, async (req, res) => {
+  const uid = req.userId;
+  const { message, amount, number, transactionCode } = req.body;
 
   try {
-    // Avoid duplicate transactions
-    const exists = await Recharge.findOne({ transactionCode });
+    if (!transactionCode || !String(transactionCode).trim()) {
+      return res.status(400).json({ error: "Transaction code is required." });
+    }
+
+    const exists = await Recharge.findOne({ transactionCode: String(transactionCode).trim() });
     if (exists) {
       return res.status(400).json({ error: "Transaction already submitted." });
     }
@@ -445,7 +475,7 @@ if (isNaN(validAmount) || validAmount <= 0) {
 });
 
 // ✅ PUT: Update profile
-app.put('/api/user/:id', async (req, res) => {
+app.put('/api/user/:id', requireAuth, requireSelfParam('id'), async (req, res) => {
   try {
     const { id } = req.params;
     const { fullName, phone } = req.body;
@@ -453,12 +483,17 @@ app.put('/api/user/:id', async (req, res) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    user.fullName = fullName || user.fullName;
-    user.phone = phone || user.phone;
+    if (fullName) user.fullName = String(fullName).trim();
+    if (phone) {
+      if (!isValidKenyanPhone(phone)) {
+        return res.status(400).json({ success: false, message: "Invalid Kenyan phone number" });
+      }
+      user.phone = String(phone).trim();
+    }
 
     await user.save();
 
-    res.json({ success: true, message: "Profile updated", user });
+    res.json({ success: true, message: "Profile updated", user: sanitizeUser(user) });
   } catch (err) {
     console.error("Update error:", err);
     res.status(500).json({ success: false, message: "Failed to update profile" });
@@ -466,11 +501,16 @@ app.put('/api/user/:id', async (req, res) => {
 });
 
   // Update password
-app.post("/api/user/update-password", async (req, res) => {
+app.post("/api/user/update-password", requireAuth, async (req, res) => {
   try {
-    const { uid, currentPassword, newPassword } = req.body;
-    if (!uid || !currentPassword || !newPassword) {
+    const uid = req.userId;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: "All password fields are required" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters" });
     }
 
     const user = await User.findById(uid);
@@ -492,7 +532,7 @@ app.post("/api/user/update-password", async (req, res) => {
 });
 
 // Get user investments
-app.get('/api/investments/:userId', async (req, res) => {
+app.get('/api/investments/:userId', requireAuth, requireSelfParam('userId'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.userId)) {
       return res.status(400).json({ success: false, message: 'Invalid user id' });
@@ -507,7 +547,7 @@ app.get('/api/investments/:userId', async (req, res) => {
 });
 
 // Get user by ID
-app.get('/api/user/:id', async (req, res) => {
+app.get('/api/user/:id', requireAuth, requireSelfParam('id'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid user id' });
@@ -526,7 +566,7 @@ app.get('/api/user/:id', async (req, res) => {
 const agentRoutes = require('./routes/agent'); // ✅ Make sure routes/agent.js exists
 app.use('/api/agent', agentRoutes);
 
-app.get('/api/referrals/:userId', async (req, res) => {
+app.get('/api/referrals/:userId', requireAuth, requireSelfParam('userId'), async (req, res) => {
   try {
     if (!isValidObjectId(req.params.userId)) {
       return res.status(400).json({ error: 'Invalid user id' });
@@ -544,8 +584,18 @@ app.get('/api/referrals/:userId', async (req, res) => {
 
 // Withdrawals now remain pending until explicitly approved/rejected by admin.
  
+// Public investment packages (for UI sync)
+app.get('/api/packages', (req, res) => {
+  const { INVESTMENT_PACKAGES } = require('./config/packages');
+  res.json({ success: true, packages: INVESTMENT_PACKAGES });
+});
+
 // Server Start
 async function startServer() {
+  if (!process.env.JWT_SECRET) {
+    console.warn('⚠️ JWT_SECRET is not set. Using a development fallback. Set JWT_SECRET in production.');
+  }
+
   await connectToDatabase();
 
   app.listen(PORT, '0.0.0.0', () => {

@@ -5,12 +5,14 @@ const crypto = require('crypto');
 const Recharge = require('../models/Recharge');
 const Withdrawal = require('../models/Withdrawal');
 const User = require('../models/User');
+const { createRateLimiter } = require('../middleware/rateLimit');
 
 // In-memory admin session store (resets on server restart)
 const adminSessions = new Map();
+const adminLoginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many admin login attempts. Try again later.' });
 
 // POST /api/admin/login — validate credentials from .env
-router.post('/login', (req, res) => {
+router.post('/login', adminLoginLimiter, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ success: false, message: 'Username and password are required.' });
@@ -171,10 +173,10 @@ router.patch('/withdrawals/:id/reject', async (req, res) => {
     withdrawal.status = 'rejected';
     await withdrawal.save();
 
-    // Refund wallet
     const user = await User.findById(withdrawal.uid);
     if (user) {
-      user.wallet += withdrawal.amount;
+      user.wallet = Number(user.wallet || 0) + Number(withdrawal.amount || 0);
+      user.cashouts = Math.max(0, Number(user.cashouts || 0) - Number(withdrawal.amount || 0));
       await user.save();
     }
 

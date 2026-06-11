@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="auth-guard.js"></script>
+  <script src="api.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>User Profile - TUST VANILLA</title>
     <link rel="icon" href="tust-vanilla-icon-192.png" type="image/png" />
@@ -134,7 +136,7 @@
 
     //  Load user profile
     try {
-      const res = await fetch(`${BASE_URL}/api/user/${uid}`);
+      const res = await API.apiFetch(`/api/user/${uid}`);
       const user = await res.json();
 
       document.getElementById("fullName").textContent = user.fullName || 'Not set';
@@ -150,7 +152,7 @@
 
     //  Load recent investments
     try {
-      const res = await fetch(`${BASE_URL}/api/investments/${uid}`);
+      const res = await API.apiFetch(`/api/investments/${uid}`);
       const data = await res.json();
       const container = document.getElementById("investmentsList");
       container.innerHTML = "";

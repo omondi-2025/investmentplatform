@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="auth-guard.js"></script>
+  <script src="api.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <link rel="icon" href="tust-vanilla-icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="tust-vanilla-icon-192.png" />
@@ -183,7 +185,7 @@ const mpesaNumbers = ["0102188852"];
   async function refreshWallet() {
     if (!user || !user._id) return;
     try {
-      const res = await fetch(`${BASE_URL}/api/user/${user._id}`, { cache: "no-store" });
+      const res = await API.apiFetch(`/api/user/${user._id}`, { cache: "no-store" });
       const currentUser = await res.json();
       if (res.ok && currentUser && currentUser._id) {
         walletBalanceEl.textContent = Number(currentUser.wallet || 0).toFixed(2);
@@ -199,7 +201,7 @@ const mpesaNumbers = ["0102188852"];
     rechargeHistory.innerHTML = '<li style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">Loading history...</li>';
 
     try {
-      const res = await fetch(`${BASE_URL}/api/recharges/${user._id}`, { cache: "no-store" });
+      const res = await API.apiFetch(`/api/recharges/${user._id}`, { cache: "no-store" });
       const history = await res.json();
       if (!Array.isArray(history) || history.length === 0) {
         rechargeHistory.innerHTML = '<li style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">No recharge records yet.</li>';
@@ -269,11 +271,9 @@ const mpesaNumbers = ["0102188852"];
     const transactionCode = transactionCodeMatch[0];
 
     try {
-      const res = await fetch(`${BASE_URL}/api/recharge`, {
+      const res = await API.apiFetch("/api/recharge", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          uid: user._id,
           message,
           amount,
           number: matchedNumber,

@@ -2,21 +2,22 @@ const express = require('express');
 const router = express.Router();
 const Withdrawal = require('../models/Withdrawal');
 const User = require('../models/User');
+const { requireAuth } = require('../middleware/auth');
 
 // POST /api/withdraw
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
-    const { uid, name, phone } = req.body;
+    const uid = req.userId;
     const amount = Number(req.body.amount);
+    const phone = String(req.body.phone || '').trim();
 
-    if (!uid || Number.isNaN(amount) || amount < 150) {
+    if (Number.isNaN(amount) || amount < 150) {
       return res.status(400).json({ message: "Minimum withdrawal amount is Ksh 150." });
     }
 
     const user = await User.findById(uid);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Limit each user to 3 withdrawal requests per calendar day.
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const startOfTomorrow = new Date(startOfToday);
@@ -36,7 +37,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 💡 Restrict withdrawal to non-deposit earnings
     const allowedWithdrawal = Number(user.wallet || 0) - Number(user.expense || 0);
     if (allowedWithdrawal < amount) {
       return res.status(400).json({
@@ -44,14 +44,13 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ✅ Proceed
     const tax = Math.ceil(amount * 0.15);
     const net = amount - tax;
 
     const withdrawal = new Withdrawal({
       uid,
-      name,
-      phone,
+      name: user.fullName,
+      phone: phone || user.phone,
       amount,
       tax,
       net,
@@ -61,7 +60,6 @@ router.post('/', async (req, res) => {
 
     await withdrawal.save();
 
-    // Deduct from wallet
     user.wallet = Number(user.wallet || 0) - amount;
     user.cashouts = Number(user.cashouts || 0) + amount;
     await user.save();

@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="auth-guard.js"></script>
+  <script src="api.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <link rel="icon" href="tust-vanilla-icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="tust-vanilla-icon-192.png" />
@@ -271,11 +273,11 @@
       return li;
     }
 
-    async function fetchJsonWithTimeout(url) {
+    async function fetchJsonWithTimeout(path) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
       try {
-        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+        const res = await API.apiFetch(path, { cache: "no-store", signal: controller.signal });
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.message || "Failed request");
@@ -346,8 +348,8 @@
       withdrawalList.innerHTML = '<li class="history-item">Loading withdrawal history...</li>';
 
       const [rechargeResult, withdrawalResult] = await Promise.allSettled([
-        fetchJsonWithTimeout(`${HISTORY_BASE_URL}/api/recharges/${userId}`),
-        fetchJsonWithTimeout(`${HISTORY_BASE_URL}/api/withdrawals/${userId}`)
+        fetchJsonWithTimeout(`/api/recharges/${userId}`),
+        fetchJsonWithTimeout(`/api/withdrawals/${userId}`)
       ]);
 
       const rechargeArray = rechargeResult.status === "fulfilled" && Array.isArray(rechargeResult.value)
@@ -368,7 +370,7 @@
       const timelineList = document.getElementById("activityTimelineList");
       timelineList.innerHTML = '<li class="history-item">Loading activity timeline...</li>';
 
-      const data = await fetchJsonWithTimeout(`${HISTORY_BASE_URL}/api/history/${userId}`);
+      const data = await fetchJsonWithTimeout(`/api/history/${userId}`);
       const totals = data && data.totals ? data.totals : {};
       const items = Array.isArray(data && data.items) ? data.items : [];
 

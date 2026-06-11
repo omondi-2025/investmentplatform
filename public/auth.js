@@ -1,33 +1,41 @@
 // auth.js – Trustcode Auth System (MongoDB Version)
 const LOCAL_STORAGE_KEY = "tc_user";
-const BASE_URL = window.location.origin;
+const TOKEN_KEY = "tc_token";
 
-// 1. Store user locally
-function storeUserLocally(userData) {
+function storeUserLocally(userData, token, rememberMe) {
+  if (window.API && window.API.setSession) {
+    window.API.setSession(userData, token, !!rememberMe);
+    return;
+  }
+  if (token) localStorage.setItem(TOKEN_KEY, token);
   if (!userData?._id) return;
   userData.lastUpdated = Date.now();
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userData));
 }
 
-// 2. Get current user
 function getCurrentUser() {
   try {
-    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
-    return stored?._id ? stored : null;
+    if (window.API && window.API.getStoredUser) {
+      return window.API.getStoredUser();
+    }
+    const token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+    const stored = JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY) || localStorage.getItem(LOCAL_STORAGE_KEY) || "null");
+    if (!token || !stored?._id) return null;
+    return stored;
   } catch {
     return null;
   }
 }
 
-// 3. Check if local data is stale
 function isDataStale(user) {
   return !user?.lastUpdated || Date.now() - user.lastUpdated > 60 * 60 * 1000;
 }
 
-// 4. Load fresh user data from MongoDB
 async function loadUserData(userId) {
   try {
-    const res = await fetch(`${BASE_URL}/api/user/${userId}`);
+    const res = window.API
+      ? await window.API.apiFetch(`/api/user/${userId}`)
+      : await fetch(`${window.location.origin}/api/user/${userId}`);
     const user = await res.json();
     if (user?._id) {
       storeUserLocally(user);
@@ -40,66 +48,72 @@ async function loadUserData(userId) {
   }
 }
 
-// 5. Sign up a new user
 async function signUpUser(email, password, fullName, phone) {
   try {
-    const res = await fetch(`${BASE_URL}/api/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email, password, fullName, phone })
-    });
+    const res = window.API
+      ? await window.API.apiFetch("/api/signup", {
+          method: "POST",
+          body: JSON.stringify({ email, password, fullName, phone })
+        })
+      : await fetch(`${window.location.origin}/api/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, fullName, phone })
+        });
     const data = await res.json();
     if (res.ok && data.success) {
-      storeUserLocally(data.user);
+      storeUserLocally(data.user, data.token);
       return { success: true };
-    } else {
-      return { success: false, message: data.message || "Signup failed" };
     }
+    return { success: false, message: data.message || "Signup failed" };
   } catch (err) {
     console.error("Signup error:", err);
     return { success: false, message: "Server error" };
   }
 }
 
-// 6. Login user
 async function loginUser(email, password) {
   try {
-    const res = await fetch(`${BASE_URL}/api/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email, password })
-    });
+    const res = window.API
+      ? await window.API.apiFetch("/api/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password })
+        })
+      : await fetch(`${window.location.origin}/api/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
     const data = await res.json();
     if (res.ok && data.success) {
-      storeUserLocally(data.user);
+      storeUserLocally(data.user, data.token);
       return { success: true };
-    } else {
-      return { success: false, message: data.message || "Login failed" };
     }
+    return { success: false, message: data.message || "Login failed" };
   } catch (err) {
     console.error("Login error:", err);
     return { success: false, message: "Server error" };
   }
 }
 
-// 7. Logout user
 function logoutUser(message = null) {
-  localStorage.removeItem(LOCAL_STORAGE_KEY);
+  if (window.API && window.API.clearSession) {
+    window.API.clearSession();
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(LOCAL_STORAGE_KEY);
+  }
   if (message) alert(message);
   window.location.href = "login.html";
 }
 
-// 8. Protect page
 async function protectPage(requiredRole = null) {
   let user = getCurrentUser();
 
   if (!user?._id) {
-    localStorage.removeItem(LOCAL_STORAGE_KEY);
-    window.location.href = "login.html";
+    logoutUser();
     return;
   }
 
@@ -118,7 +132,6 @@ async function protectPage(requiredRole = null) {
   }
 }
 
-// 9. Redirect if already logged in
 function redirectIfLoggedIn() {
   const user = getCurrentUser();
   if (user && !isDataStale(user)) {
@@ -126,7 +139,6 @@ function redirectIfLoggedIn() {
   }
 }
 
-// 10. Expose to global scope
 window.getCurrentUser = getCurrentUser;
 window.storeUserLocally = storeUserLocally;
 window.loadUserData = loadUserData;

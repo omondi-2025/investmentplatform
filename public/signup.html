@@ -1,10 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html lang="en">
 
 <head>
 
   <meta charset="UTF-8" />
+  <script src="api.js"></script>
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 
@@ -274,36 +275,15 @@
 
       try {
 
-        const baseUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-
-          ? window.location.origin
-
-          : "https://investmentplatform.onrender.com";
-
-        const res = await fetch(`${baseUrl}/api/signup`, {
-
+        const res = await API.apiFetch("/api/signup", {
           method: "POST",
-
-          headers: {
-
-            "Content-Type": "application/json"
-
-          },
-
           body: JSON.stringify({
-
             fullName,
-
             phone,
-
             email,
-
             password,
-
             refCode: referredBy
-
           })
-
         });
 
 
@@ -314,7 +294,7 @@
 
         if (res.ok && data.success) {
 
-          localStorage.setItem("tc_user", JSON.stringify(data.user));
+          API.setSession(data.user, data.token, true);
 
           signupMessage.textContent = "Signup successful!";
 

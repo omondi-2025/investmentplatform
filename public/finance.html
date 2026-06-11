@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="auth-guard.js"></script>
+  <script src="api.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <link rel="icon" href="tust-vanilla-icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="tust-vanilla-icon-192.png" />
@@ -210,8 +212,8 @@
       };
     }
 
-    async function fetchJson(url) {
-      const res = await fetch(url, { cache: 'no-store' });
+    async function fetchJson(path) {
+      const res = await API.apiFetch(path, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || 'Failed request');
@@ -314,9 +316,9 @@
       document.getElementById('financeStatus').textContent = 'Loading records...';
 
       const [user, history, investmentsRes] = await Promise.all([
-        fetchJson(`${FINANCE_BASE_URL}/api/user/${currentUser._id}`),
-        fetchJson(`${FINANCE_BASE_URL}/api/history/${currentUser._id}`),
-        fetchJson(`${FINANCE_BASE_URL}/api/investments/${currentUser._id}`)
+        fetchJson(`/api/user/${currentUser._id}`),
+        fetchJson(`/api/history/${currentUser._id}`),
+        fetchJson(`/api/investments/${currentUser._id}`)
       ]);
 
       financeState.user = user;

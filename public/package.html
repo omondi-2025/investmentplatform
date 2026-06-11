@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="auth-guard.js"></script>
+  <script src="api.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <link rel="icon" href="tust-vanilla-icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="tust-vanilla-icon-192.png" />
@@ -175,7 +177,7 @@
         ? window.location.origin
         : "https://investmentplatform.onrender.com";
 
-      const res = await fetch(`${BASE_URL}/api/investments/${user._id}`, { cache: "no-store" });
+      const res = await API.apiFetch(`/api/investments/${user._id}`, { cache: "no-store" });
       const data = await res.json();
       const investments = Array.isArray(data.investments) ? data.investments : [];
 
@@ -218,7 +220,7 @@
     const BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
       ? window.location.origin
       : "https://investmentplatform.onrender.com";
-    const res = await fetch(`${BASE_URL}/api/user/${user._id}`, { cache: "no-store" });
+    const res = await API.apiFetch(`/api/user/${user._id}`, { cache: "no-store" });
     const fresh = await res.json();
     if (res.ok && fresh && fresh._id) {
       wallet = Number(fresh.wallet || 0);
@@ -249,11 +251,8 @@
     : "https://investmentplatform.onrender.com";
 
   try {
-    const res = await fetch(`${BASE_URL}/api/invest`, {
+    const res = await API.apiFetch("/api/invest", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
       body: JSON.stringify(investment)
     });
 

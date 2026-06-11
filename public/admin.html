@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const apiUrl = window.location.hostname === 'localhost'
+    const apiUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
       ? window.location.origin
       : 'https://investmentplatform.onrender.com';
     let adminPollTimer = null;

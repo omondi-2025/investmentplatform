@@ -39,6 +39,11 @@
 					</div>
 				</div>
 
+				<div class="remember-row">
+					<input type="checkbox" id="rememberMe" />
+					<label for="rememberMe">Remember me</label>
+				</div>
+
 				<button type="submit">Login</button>
 				<div id="loginMessage"></div>
 			</form>
@@ -49,6 +54,7 @@
 		</div>
 	</div>
 
+	<script src="api.js"></script>
 	<script>
 		document.querySelectorAll(".toggle-password").forEach(function (btn) {
 			btn.addEventListener("click", function () {
@@ -64,15 +70,18 @@
 		const loginForm = document.getElementById("loginForm");
 		const loginMessage = document.getElementById("loginMessage");
 		const signupLink = document.getElementById("signupLink");
-		const baseUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-			? window.location.origin
-			: "https://investmentplatform.onrender.com";
-
 		const urlParams = new URLSearchParams(window.location.search);
 		const refCode = urlParams.get("ref");
 		if (refCode) signupLink.href = `signup.html?ref=${refCode}`;
 
-		if (localStorage.getItem("tc_user")) {
+		const rememberCheckbox = document.getElementById("rememberMe");
+		const savedEmail = API.getSavedEmail();
+		if (savedEmail) {
+			document.getElementById("email").value = savedEmail;
+			rememberCheckbox.checked = true;
+		}
+
+		if (API.getToken() && API.getStoredUser()) {
 			window.location.href = "index.html";
 		}
 
@@ -80,6 +89,7 @@
 			e.preventDefault();
 			const email = document.getElementById("email").value.trim();
 			const password = document.getElementById("password").value.trim();
+			const rememberMe = rememberCheckbox.checked;
 
 			const submitBtn = loginForm.querySelector("button[type='submit']");
 			submitBtn.disabled = true;
@@ -89,16 +99,15 @@
 			loginMessage.className = "alert";
 
 			try {
-				const res = await fetch(`${baseUrl}/api/login`, {
+				const res = await API.apiFetch("/api/login", {
 					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ email, password })
+					body: JSON.stringify({ email, password, rememberMe })
 				});
 
 				const data = await res.json();
 
 				if (res.ok && data.success) {
-					localStorage.setItem("tc_user", JSON.stringify(data.user));
+					API.setSession(data.user, data.token, rememberMe);
 					loginMessage.textContent = "Login successful! Redirecting...";
 					loginMessage.className = "alert success";
 					setTimeout(() => window.location.href = "index.html", 1000);

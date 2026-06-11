@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <script src="auth-guard.js"></script>
+  <script src="api.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <link rel="icon" href="tust-vanilla-icon-192.png" type="image/png" />
   <link rel="apple-touch-icon" href="tust-vanilla-icon-192.png" />
@@ -165,7 +167,7 @@
       let userData = null;
 
       async function fetchUserData() {
-        const res = await fetch(`${apiUrl}/api/user/${user._id}`);
+        const res = await API.apiFetch(`/api/user/${user._id}`);
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to fetch user");
         userData = data;
@@ -176,7 +178,7 @@
       async function loadHistory() {
         historyList.innerHTML = "<li>Loading...</li>";
         try {
-          const res = await fetch(`${apiUrl}/api/withdrawals/${user._id}`);
+          const res = await API.apiFetch(`/api/withdrawals/${user._id}`);
           const history = await res.json();
 
           if (!Array.isArray(history) || history.length === 0) {
@@ -264,10 +266,9 @@
         }
 
         try {
-          const res = await fetch(`${apiUrl}/api/withdraw`, {
+          const res = await API.apiFetch("/api/withdraw", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uid: user._id, amount, phone })
+            body: JSON.stringify({ amount, phone })
           });
 
           const data = await res.json();
